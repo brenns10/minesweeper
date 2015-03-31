@@ -58,7 +58,6 @@ void msw_generate_grid(smb_mine *obj) {
   }
 
   // Naively and randomly initialize the mines.
-  srand(time(NULL));
   while (mines > 0) {
     i = rand() % ncells;
     if (obj->grid[i] == MSW_CLEAR) {
@@ -100,6 +99,7 @@ void msw_generate_grid(smb_mine *obj) {
    initial selection is clear.
  */
 void msw_initial_grid(smb_mine *obj, int r, int c) {
+  srand(time(NULL));
   obj->grid = smb_new(char, obj->rows * obj->columns);
   do {
     msw_generate_grid(obj);
