@@ -13,7 +13,7 @@
 #include <stdio.h>  // fprintf, fputc, scanf
 #include <stdlib.h> // srand, rand, calloc, malloc, free
 #include <time.h>   // time
-
+#include <string.h> // strcmp
 
 #include "minesweeper.h"
 
@@ -287,6 +287,19 @@ int msw_flag(smb_mine *game, int r, int c) {
 }
 
 /**
+   @brief Unflag a cell.
+ */
+int msw_unflag(smb_mine *game, int r, int c) {
+  int index = msw_index(game, r, c);
+  if (game->visible[index] == MSW_FLAG) {
+    game->visible[index] = MSW_UNKNOWN;
+    return MSW_MMOVE;
+  } else {
+    return MSW_MUNFLAGERR;
+  }
+}
+
+/**
    @brief "Reveal" a cell.
 
    This operation will dig every neighboring cell if the current cell is marked
@@ -339,6 +352,16 @@ void cls() {
   printf("\e[1;1H\e[2J");
 }
 
+void usage(char *name) {
+  printf("usage: %s [rows columns [mines]]\n", name);
+  printf("\tPlay minesweeper.\n");
+  printf("\nIn-game commands:\n");
+  printf("\t- 'd ROW,COL' - dig at ROW,COL\n");
+  printf("\t- 'f ROW,COL' - flag ROW,COL\n");
+  printf("\t- 'u ROW,COL' - unflag (remove flag) ROW,COL\n");
+  printf("\t- 'r ROW,COL' - reveal ROW,COL\n");
+}
+
 /**
    @brief Run a command oriented game of minesweeper.
  */
@@ -346,28 +369,59 @@ int main(int argc, char *argv[])
 {
   smb_mine game;
   int status = MSW_MMOVE;
-  int r, c;
+  int r, c, m;
   char op;
-  smb_mine_init(&game, 10, 10, 20);
 
+  // Show usage screen.
+  if (argc >= 2 && strcmp(argv[1], "-h") == 0) {
+    usage(argv[0]);
+    return EXIT_SUCCESS;
+  }
+
+  // Set the grid size, if given.
+  if (argc >= 3) {
+    sscanf(argv[1], "%d", &r);
+    sscanf(argv[2], "%d", &c);
+    if (r <= 0 || c <= 0 || r > 255 || c > 255) {
+      fprintf(stderr, "error: bad grid size (%dx%d)\n", r, c);
+      return EXIT_FAILURE;
+    }
+  } else {
+    r = c = 10;
+  }
+
+  if (argc >= 4) {
+    sscanf(argv[3], "%d", &m);
+    if (m <= 0 || m > r*c) {
+      fprintf(stderr, "error: bad number of mines (%d)\n", m);
+      return EXIT_FAILURE;
+    }
+  } else {
+    m = 20;
+  }
+
+  smb_mine_init(&game, r, c, m);
   cls();
   msw_print(&game, stdout);
   while (MSW_MOK(status)) {
     printf("%s\n", MSW_MSG[status]);
     printf(">");
     scanf(" %c", &op);
-    if (op == 'q') {
+    if (op == 'q' || op == 'Q') {
       return msw_quit(&game);
     }
 
     scanf(" %d , %d", &r, &c);
-    printf("Op: %c, Row: %d, Col: %d\n", op, r, c);
-    if (op == 'd') {
+    if (op == 'd' || op == 'D') {
       status = msw_dig(&game, r, c);
-    } else if (op == 'r') {
+    } else if (op == 'r' || op == 'R') {
       status = msw_reveal(&game, r, c);
-    } else {
+    } else if (op == 'u' || op == 'U') {
+      status = msw_unflag(&game, r, c);
+    } else if (op == 'f' || op == 'F') {
       status = msw_flag(&game, r, c);
+    } else {
+      status = MSW_CMD;
     }
     cls();
     msw_print(&game, stdout);
