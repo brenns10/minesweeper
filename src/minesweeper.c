@@ -346,6 +346,40 @@ void cls() {
   printf("\e[1;1H\e[2J");
 }
 
+/**
+   @brief Run a whole game via CLI.
+ */
+void run_game(int r, int c, int m)
+{
+  smb_mine game;
+  int status = MSW_MMOVE;
+  char op;
+
+  smb_mine_init(&game, r, c, m);
+  cls();
+  msw_print(&game, stdout);
+  while (MSW_MOK(status)) {
+    printf("%s\n", MSW_MSG[status]);
+    printf(">");
+    scanf(" %c %d , %d", &op, &r, &c);
+    if (op == 'd' || op == 'D') {
+      status = msw_dig(&game, r, c);
+    } else if (op == 'r' || op == 'R') {
+      status = msw_reveal(&game, r, c);
+    } else if (op == 'u' || op == 'U') {
+      status = msw_unflag(&game, r, c);
+    } else if (op == 'f' || op == 'F') {
+      status = msw_flag(&game, r, c);
+    } else {
+      status = MSW_CMD;
+    }
+    cls();
+    msw_print(&game, stdout);
+  }
+  printf("%s\n", MSW_MSG[status]);
+  smb_mine_destroy(&game);
+}
+
 void usage(char *name) {
   printf("usage: %s [rows columns [mines]]\n", name);
   printf("\tPlay minesweeper.\n");
@@ -361,10 +395,7 @@ void usage(char *name) {
  */
 int main(int argc, char *argv[])
 {
-  smb_mine game;
-  int status = MSW_MMOVE;
   int r, c, m;
-  char op;
 
   // Show usage screen.
   if (argc >= 2 && strcmp(argv[1], "-h") == 0) {
@@ -394,28 +425,7 @@ int main(int argc, char *argv[])
     m = 20;
   }
 
-  smb_mine_init(&game, r, c, m);
-  cls();
-  msw_print(&game, stdout);
-  while (MSW_MOK(status)) {
-    printf("%s\n", MSW_MSG[status]);
-    printf(">");
-    scanf(" %c %d , %d", &op, &r, &c);
-    if (op == 'd' || op == 'D') {
-      status = msw_dig(&game, r, c);
-    } else if (op == 'r' || op == 'R') {
-      status = msw_reveal(&game, r, c);
-    } else if (op == 'u' || op == 'U') {
-      status = msw_unflag(&game, r, c);
-    } else if (op == 'f' || op == 'F') {
-      status = msw_flag(&game, r, c);
-    } else {
-      status = MSW_CMD;
-    }
-    cls();
-    msw_print(&game, stdout);
-  }
+  run_game(r,c,m);
 
-  smb_mine_destroy(&game);
   return 0;
 }
