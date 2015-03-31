@@ -326,6 +326,12 @@ int msw_reveal(smb_mine *game, int r, int c) {
   }
 }
 
+int msw_quit(smb_mine *game) {
+  printf("Aww. Play again soon!\n");
+  smb_mine_destroy(game);
+  return 0;
+}
+
 /**
    @brief Clear the screen (for POSIX terminals).
  */
@@ -349,7 +355,13 @@ int main(int argc, char *argv[])
   while (MSW_MOK(status)) {
     printf("%s\n", MSW_MSG[status]);
     printf(">");
-    scanf(" %c %d , %d", &op, &r, &c);
+    scanf(" %c", &op);
+    if (op == 'q') {
+      return msw_quit(&game);
+    }
+
+    scanf(" %d , %d", &r, &c);
+    printf("Op: %c, Row: %d, Col: %d\n", op, r, c);
     if (op == 'd') {
       status = msw_dig(&game, r, c);
     } else if (op == 'r') {
