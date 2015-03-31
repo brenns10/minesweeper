@@ -339,6 +339,22 @@ int msw_reveal(smb_mine *game, int r, int c) {
   }
 }
 
+int msw_won(smb_mine *game) {
+  int ncells = game->rows * game->columns;
+  int i;
+  for (i = 0; i < ncells; i++) {
+    if (game->grid[i] == MSW_MINE) {
+      if (game->visible[i] != MSW_UNKNOWN &&
+          game->visible[i] != MSW_FLAG) {
+        return 0;
+      }
+    } else if (game->grid[i] != game->visible[i]) {
+      return 0;
+    }
+  }
+  return 1;
+}
+
 int msw_quit(smb_mine *game) {
   printf("Aww. Play again soon!\n");
   smb_mine_destroy(game);
@@ -400,6 +416,11 @@ void run_game(int r, int c, int m)
     }
     cls();
     msw_print(&game, stdout);
+
+    if (msw_won(&game)) {
+      status = MSW_MWIN;
+      break;
+    }
   }
   printf("%s\n", MSW_MSG[status]);
   smb_mine_destroy(&game);

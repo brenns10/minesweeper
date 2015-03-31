@@ -34,6 +34,7 @@ char *MSW_MSG[] = {
   "Bad command.",
   "BOOM!",
   "Can only unflag a flagged cell.",
+  "You win!",
 };
 
 #define MSW_MMOVE 0
@@ -45,6 +46,7 @@ char *MSW_MSG[] = {
 #define MSW_CMD 6
 #define MSW_MBOOM 7
 #define MSW_MUNFLAGERR 8
+#define MSW_MWIN 9
 
 /* Macro to determine if the game can continue after a move. */
 #define MSW_MOK(x) ((x) != MSW_MBOOM)
