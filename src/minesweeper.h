@@ -76,5 +76,6 @@ int msw_dig(smb_mine *game, int row, int column);
 int msw_flag(smb_mine *game, int r, int c);
 int msw_unflag(smb_mine *game, int r, int c);
 int msw_reveal(smb_mine *game, int r, int c);
+int msw_quit(smb_mine *game);
 
 #endif /* MINESWEEPER_H */

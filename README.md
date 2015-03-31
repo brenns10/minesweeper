@@ -22,6 +22,7 @@ a comma, and a column.  Here are the possible commands right now:
 * `u`: Unflag.  This removes a flag.
 * `r`: Reveal.  Use this to dig all the neighbors of a cell marked with the
   number *n*, when you have already flagged the *n* neighbors that have mines.
+* `q`: Quit. Use this if you're doing really poorly and just want to give up.
 
 Whitespace doesn't matter too much.  `d 0, 3`, `d0,3`, `d0, 3`, `d 0,3`, and `d
 0 , 3` are all OK.
