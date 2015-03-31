@@ -7,22 +7,7 @@ This is a command line minesweeper game in C.
 Compiling & Running
 -------------------
 
-This program "depends" on my
-[libstephen](https://github.com/brenns10/libstephen) library.  Really the only
-purpose it serves right now is to provide my usual memory allocation macros,
-which do error checking for me.  If my future implementations still don't
-require any exciting features of my library, I'll remove the dependency.  But
-since it's there right now, my git repo has a submodule, and that complicates
-things slightly.
-
-```bash
-git clone https://github.com/brenns10/minesweeper
-cd minesweeper
-git submodule init
-git submodule update
-make
-bin/release/main
-```
+Just run `make` to build.  The binary is `bin/release/main`.
 
 
 Playing

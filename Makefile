@@ -13,7 +13,7 @@
 # Compiler Variable Declarations
 CC=gcc
 FLAGS=
-INC=-Ilibstephen/inc/ -Isrc/
+INC=-Isrc/
 CFLAGS=$(FLAGS) -c -g -Wall --std=c99 $(SMB_CONF) $(INC)
 LFLAGS=$(FLAGS)
 DIR_GUARD=@mkdir -p $(@D)
@@ -43,10 +43,10 @@ endif
 SOURCES=$(shell find src/ -type f -name "*.c")
 SOURCEDIRS=$(shell find src/ -type d)
 
-OBJECTS=$(patsubst src/%.c,obj/$(CFG)/%.o,$(SOURCES)) obj/$(CFG)/libstephen.a
+OBJECTS=$(patsubst src/%.c,obj/$(CFG)/%.o,$(SOURCES))
 
 # Main targets
-.PHONY: all clean clean_all clean_docs clean_cov libstephen_build docs gcov
+.PHONY: all clean clean_all clean_docs clean_cov docs gcov
 
 all: bin/$(CFG)/main
 
@@ -56,12 +56,10 @@ gcov:
 	rm coverage.info
 
 clean:
-	rm -rf bin/$(CFG)/* obj/$(CFG)/* src/libstephen.h src/*.gch
-	make -C libstephen CFG=$(CFG) clean
+	rm -rf bin/$(CFG)/* obj/$(CFG)/* src/*.gch
 
 clean_all: clean clean_docs clean_cov
 	rm -rf bin/* obj/*
-	make -C libstephen CFG=$(CFG) clean_all
 
 clean_docs:
 	rm -rf doc/*
@@ -72,14 +70,7 @@ clean_cov:
 docs: src/*
 	doxygen
 
-# Libstephen compile and header.
-obj/$(CFG)/libstephen.a: libstephen_build
-	$(DIR_GUARD)
-	cp libstephen/bin/$(CFG)/libstephen.a obj/$(CFG)/libstephen.a
-
-libstephen_build:
-	make -C libstephen CFG=$(CFG) lib
-
+# Dependencies.
 src/minesweeper.c: src/minesweeper.h
 
 # --- Compile Rule
@@ -88,6 +79,6 @@ obj/$(CFG)/%.o: src/%.c
 	$(CC) $(CFLAGS) $< -o $@
 
 # --- Link Rule
-bin/$(CFG)/main: $(OBJECTS) obj/$(CFG)/libstephen.a
+bin/$(CFG)/main: $(OBJECTS)
 	$(DIR_GUARD)
 	$(CC) $(LFLAGS) $(OBJECTS) -o bin/$(CFG)/main

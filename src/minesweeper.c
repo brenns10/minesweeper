@@ -10,12 +10,11 @@
 
 *******************************************************************************/
 
-#include <stdio.h>  // fprintf, fputc
-#include <stdlib.h> // srand, rand
+#include <stdio.h>  // fprintf, fputc, scanf
+#include <stdlib.h> // srand, rand, calloc, malloc, free
 #include <time.h>   // time
 
 
-#include "libstephen/base.h"
 #include "minesweeper.h"
 
 /*
@@ -105,7 +104,13 @@ void msw_generate_grid(smb_mine *obj) {
  */
 void msw_initial_grid(smb_mine *obj, int r, int c) {
   srand(time(NULL));
-  obj->grid = smb_new(char, obj->rows * obj->columns);
+
+  obj->grid = calloc(obj->rows * obj->columns, sizeof(char));
+  if (obj->grid == NULL) {
+    fprintf(stderr, "error: calloc() returned null.\n");
+    exit(EXIT_FAILURE);
+  }
+
   do {
     msw_generate_grid(obj);
   } while (obj->grid[msw_index(obj, r, c)] != MSW_CLEAR);
@@ -124,7 +129,11 @@ void smb_mine_init(smb_mine *obj, int rows, int columns, int mines)
   obj->columns = columns;
   obj->mines = mines;
   obj->grid = NULL;
-  obj->visible = smb_new(char, ncells);
+  obj->visible = calloc(ncells, sizeof(char));
+  if (obj->visible == NULL) {
+    fprintf(stderr, "error: calloc() returned null.\n");
+    exit(EXIT_FAILURE);
+  }
 
   // Initialize the visible board and underlying grid.
   for (i = 0; i < ncells; i++) {
@@ -137,7 +146,11 @@ void smb_mine_init(smb_mine *obj, int rows, int columns, int mines)
  */
 smb_mine *smb_mine_create(int rows, int columns, int mines)
 {
-  smb_mine *obj = smb_new(smb_mine, 1);
+  smb_mine *obj = malloc(sizeof(smb_mine));
+  if (obj == NULL) {
+    fprintf(stderr, "error: malloc() returned null.\n");
+    exit(EXIT_FAILURE);
+  }
   smb_mine_init(obj, rows, columns, mines);
   return obj;
 }
@@ -148,8 +161,8 @@ smb_mine *smb_mine_create(int rows, int columns, int mines)
 void smb_mine_destroy(smb_mine *obj)
 {
   // Cleanup logic
-  smb_free(obj->grid);
-  smb_free(obj->visible);
+  free(obj->grid);
+  free(obj->visible);
 }
 
 /**
@@ -158,7 +171,7 @@ void smb_mine_destroy(smb_mine *obj)
 void smb_mine_delete(smb_mine *obj) {
   if (obj) {
     smb_mine_destroy(obj);
-    smb_free(obj);
+    free(obj);
   } else {
     fprintf(stderr, "smb_mine_delete: called with null pointer.\n");
   }
