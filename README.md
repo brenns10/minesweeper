@@ -37,9 +37,8 @@ a comma, and a column.  Here are the possible commands right now:
 * `r`: Reveal.  Use this to dig all the neighbors of a cell marked with the
   number *n*, when you have already flagged the *n* neighbors that have mines.
 
-Whitespace doesn't matter too much.  `d 0, 3`, `d0,3`, `d0, 3`, and `d 0,3` are
-all OK.  I guess the only thing you can't do is put a space between the row and
-the comma.
+Whitespace doesn't matter too much.  `d 0, 3`, `d0,3`, `d0, 3`, `d 0,3`, and `d
+0 , 3` are all OK.
 
 If you blow up, the game should terminate.  If you win, I'm pretty sure the game
 won't actually do anything, so you'll just have to exit (`Ctrl-C`) and pat

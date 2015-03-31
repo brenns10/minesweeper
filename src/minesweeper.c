@@ -336,7 +336,7 @@ int main(int argc, char *argv[])
   while (MSW_MOK(status)) {
     printf("%s\n", MSW_MSG[status]);
     printf(">");
-    scanf("%c %d, %d", &op, &r, &c);
+    scanf(" %c %d , %d", &op, &r, &c);
     if (op == 'd') {
       status = msw_dig(&game, r, c);
     } else if (op == 'r') {
