@@ -168,11 +168,10 @@ void smb_mine_delete(smb_mine *obj) {
    @brief Print the current board to the given output stream.
    @param game The game to print.
    @param stream The stream to print to.
-   @param which Which buffer to print -- the visible one or the true one.
+   @param buffer Which buffer to print -- the visible one or the true one.
  */
-void msw_print_buf(smb_mine *game, FILE *stream, int which) {
+void msw_print_buf(smb_mine *game, FILE *stream, char *buffer) {
   int i, j;
-  char *buffer = (which == MSW_PRINT_VISIBLE) ? game->visible : game->grid;
   char cell;
 
   // Print tens row:
@@ -213,7 +212,7 @@ void msw_print_buf(smb_mine *game, FILE *stream, int which) {
    @brief Print a minesweeper game's visible board to a stream.
  */
 void msw_print(smb_mine *game, FILE *stream) {
-  msw_print_buf(game, stream, MSW_PRINT_VISIBLE);
+  msw_print_buf(game, stream, game->visible);
 }
 
 /**
@@ -229,7 +228,7 @@ int msw_dig(smb_mine *game, int row, int column) {
 
   // If the cell is out of bounds, return some sort of error.
   if (!msw_in_bounds(game, row, column)) {
-    return 0;
+    return MSW_MBOUND;
   }
 
   // If the game hasn't started yet (i.e. the grid is null).
@@ -246,18 +245,19 @@ int msw_dig(smb_mine *game, int row, int column) {
     for (n = 0; n < NUM_NEIGHBORS; n++) {
       msw_dig(game, row + rnbr[n], column + cnbr[n]);
     }
+    return MSW_MMOVE;
   } else if (game->visible[index] == MSW_FLAG) {
     // If the selected cell is a flag, do nothing.
-    return 1;
+    return MSW_FLAGGED;
   } else if (game->grid[index] == MSW_MINE) {
     // If the selected cell is a mine.
     game->visible[index] = MSW_MINE;
-    return -1; // BOOM
+    return MSW_MBOOM; // BOOM
   } else {
     // Otherwise, reveal the data in the grid.
     game->visible[index] = game->grid[index];
+    return MSW_MMOVE;
   }
-  return 1;
 }
 
 /**
@@ -267,8 +267,10 @@ int msw_flag(smb_mine *game, int r, int c) {
   int index = msw_index(game, r, c);
   if (game->visible[index] == MSW_UNKNOWN) {
     game->visible[index] = MSW_FLAG;
+    return MSW_MMOVE;
+  } else {
+    return MSW_MFLAGERR;
   }
-  return 1;
 }
 
 /**
@@ -286,7 +288,7 @@ int msw_reveal(smb_mine *game, int r, int c) {
   if (game->visible[index] == MSW_UNKNOWN ||
       game->visible[index] == MSW_MINE ||
       game->visible[index] == MSW_FLAG) {
-    return 1;
+    return MSW_MREVEALHF;
   }
 
   // Count the flags around the cell.
@@ -302,11 +304,13 @@ int msw_reveal(smb_mine *game, int r, int c) {
     for (n = 0; n < NUM_NEIGHBORS; n++) {
       if (msw_in_bounds(game, r+rnbr[n], c+cnbr[n])) {
         rv = msw_dig(game, r+rnbr[n], c+cnbr[n]);
-        if (rv != 1) return rv;
+        if (!MSW_MOK(rv)) return rv;
       }
     }
+    return MSW_MMOVE;
+  } else {
+    return MSW_MREVEALN;
   }
-  return 1;
 }
 
 /**
@@ -322,14 +326,15 @@ void cls() {
 int main(int argc, char *argv[])
 {
   smb_mine game;
-  int status = 1;
+  int status = MSW_MMOVE;
   int r, c;
   char op;
   smb_mine_init(&game, 10, 10, 20);
 
   cls();
   msw_print(&game, stdout);
-  while (status == 1) {
+  while (MSW_MOK(status)) {
+    printf("%s\n", MSW_MSG[status]);
     printf(">");
     scanf("%c %d, %d", &op, &r, &c);
     if (op == 'd') {
