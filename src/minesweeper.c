@@ -13,7 +13,7 @@
 #include <stdio.h>  // fprintf, fputc, scanf
 #include <stdlib.h> // srand, rand, calloc, malloc, free
 #include <time.h>   // time
-
+#include <string.h> // strcmp
 
 #include "minesweeper.h"
 
@@ -333,6 +333,15 @@ void cls() {
   printf("\e[1;1H\e[2J");
 }
 
+void usage(char *name) {
+  printf("usage: %s [rows columns [mines]]\n", name);
+  printf("\tPlay minesweeper.\n");
+  printf("\nIn-game commands:\n");
+  printf("\t- 'd ROW,COL' - dig at ROW,COL\n");
+  printf("\t- 'f ROW,COL' - flag ROW,COL\n");
+  printf("\t- 'r ROW,COL' - reveal ROW,COL\n");
+}
+
 /**
    @brief Run a command oriented game of minesweeper.
  */
@@ -340,10 +349,38 @@ int main(int argc, char *argv[])
 {
   smb_mine game;
   int status = MSW_MMOVE;
-  int r, c;
+  int r, c, m;
   char op;
-  smb_mine_init(&game, 10, 10, 20);
 
+  // Show usage screen.
+  if (argc >= 2 && strcmp(argv[1], "-h") == 0) {
+    usage(argv[0]);
+    return EXIT_SUCCESS;
+  }
+
+  // Set the grid size, if given.
+  if (argc >= 3) {
+    sscanf(argv[1], "%d", &r);
+    sscanf(argv[2], "%d", &c);
+    if (r <= 0 || c <= 0 || r > 255 || c > 255) {
+      fprintf(stderr, "error: bad grid size (%dx%d)\n", r, c);
+      return EXIT_FAILURE;
+    }
+  } else {
+    r = c = 10;
+  }
+
+  if (argc >= 4) {
+    sscanf(argv[3], "%d", &m);
+    if (m <= 0 || m > r*c) {
+      fprintf(stderr, "error: bad number of mines (%d)\n", m);
+      return EXIT_FAILURE;
+    }
+  } else {
+    m = 20;
+  }
+
+  smb_mine_init(&game, r, c, m);
   cls();
   msw_print(&game, stdout);
   while (MSW_MOK(status)) {
@@ -354,8 +391,10 @@ int main(int argc, char *argv[])
       status = msw_dig(&game, r, c);
     } else if (op == 'r') {
       status = msw_reveal(&game, r, c);
-    } else {
+    } else if (op == 'f') {
       status = msw_flag(&game, r, c);
+    } else {
+      status = MSW_CMD;
     }
     cls();
     msw_print(&game, stdout);
