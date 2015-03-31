@@ -360,6 +360,7 @@ void usage(char *name) {
   printf("\t- 'f ROW,COL' - flag ROW,COL\n");
   printf("\t- 'u ROW,COL' - unflag (remove flag) ROW,COL\n");
   printf("\t- 'r ROW,COL' - reveal ROW,COL\n");
+  printf("\t- 'q' - quit\n");
 }
 
 /**
