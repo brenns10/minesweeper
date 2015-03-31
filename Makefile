@@ -14,7 +14,7 @@
 CC=gcc
 FLAGS=
 INC=-Ilibstephen/inc/ -Isrc/
-CFLAGS=$(FLAGS) -c -g --std=c99 $(SMB_CONF) $(INC)
+CFLAGS=$(FLAGS) -c -g -Wall --std=c99 $(SMB_CONF) $(INC)
 LFLAGS=$(FLAGS)
 DIR_GUARD=@mkdir -p $(@D)
 
