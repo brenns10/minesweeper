@@ -29,3 +29,10 @@ a comma, and a column.  Here are the possible commands right now:
 Whitespace doesn't matter too much.  `d 0, 3`, `d0,3`, `d0, 3`, `d 0,3`, and `d
 0 , 3` are all OK.  You can also (theoretically) enter multiple commands on one
 line (separated by whitespace).
+
+
+License
+-------
+
+This code is under the terms of the Revised BSD License.  See the file
+`LICENSE.txt` for more details.
