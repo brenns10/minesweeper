@@ -207,8 +207,8 @@ void msw_print_buf(smb_mine *game, FILE *stream, int which) {
 /**
    @brief Print a minesweeper game's visible board to a stream.
  */
-int msw_print(smb_mine *game, FILE *stream) {
-  return msw_print_buf(game, stream, MSW_PRINT_VISIBLE);
+void msw_print(smb_mine *game, FILE *stream) {
+  msw_print_buf(game, stream, MSW_PRINT_VISIBLE);
 }
 
 /**
@@ -279,7 +279,6 @@ void cls() {
 int main(int argc, char *argv[])
 {
   smb_mine game;
-  smb_status s = SMB_SUCCESS;
   int status = 1;
   int r, c;
   char op;
