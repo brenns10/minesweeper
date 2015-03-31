@@ -47,26 +47,31 @@ int msw_index(smb_mine *game, int row, int column) {
  */
 void msw_generate_grid(smb_mine *obj) {
   int i, j, n;
+  char tmp;
   int rows = obj->rows;
   int columns = obj->columns;
   int mines = obj->mines;
   int ncells = rows * columns;
 
   // Initialize the grid.
-  for (i = 0; i < rows*columns; i++) {
+  for (i = 0; i < ncells; i++) {
     obj->grid[i] = MSW_CLEAR;
   }
 
-  // Naively and randomly initialize the mines.
-  while (mines > 0) {
-    i = rand() % ncells;
-    if (obj->grid[i] == MSW_CLEAR) {
-      obj->grid[i] = MSW_MINE;
-      mines--;
-    }
+  // Add the mines.
+  for (i = 0; i < mines; i++) {
+    obj->grid[i] = MSW_MINE;
   }
 
-  // Initialize the rest of the board.
+  // Shuffle the mines. (Fisher-Yates)
+  for (i = ncells-1; i > 0; i--) {
+    j = rand() % (i+1);
+    tmp = obj->grid[j];
+    obj->grid[j] = obj->grid[i];
+    obj->grid[i] = tmp;
+  }
+
+  // Count adjacent mines.
   for (i = 0; i < rows; i++) {
     for (j = 0; j < columns; j++) {
 
@@ -111,7 +116,7 @@ void msw_initial_grid(smb_mine *obj, int r, int c) {
  */
 void smb_mine_init(smb_mine *obj, int rows, int columns, int mines)
 {
-  int i, j, n;
+  int i;
   int ncells = rows * columns;
 
   // Initialization logic
@@ -122,7 +127,7 @@ void smb_mine_init(smb_mine *obj, int rows, int columns, int mines)
   obj->visible = smb_new(char, ncells);
 
   // Initialize the visible board and underlying grid.
-  for (i = 0; i < rows*columns; i++) {
+  for (i = 0; i < ncells; i++) {
     obj->visible[i] = MSW_UNKNOWN;
   }
 }
@@ -320,7 +325,6 @@ int main(int argc, char *argv[])
   int status = 1;
   int r, c;
   char op;
-  char *input;
   smb_mine_init(&game, 10, 10, 20);
 
   cls();
