@@ -342,7 +342,7 @@ int msw_reveal(smb_mine *game, int r, int c) {
 int msw_quit(smb_mine *game) {
   printf("Aww. Play again soon!\n");
   smb_mine_destroy(game);
-  return 0;
+  exit(EXIT_SUCCESS);
 }
 
 /**
@@ -350,6 +350,16 @@ int msw_quit(smb_mine *game) {
  */
 void cls() {
   printf("\e[1;1H\e[2J");
+}
+
+void help() {
+  printf("\nIn-game commands:\n");
+  printf("\t- 'd ROW,COL' - dig at ROW,COL\n");
+  printf("\t- 'f ROW,COL' - flag ROW,COL\n");
+  printf("\t- 'u ROW,COL' - unflag (remove flag) ROW,COL\n");
+  printf("\t- 'r ROW,COL' - reveal ROW,COL\n");
+  printf("\t- 'q' - quit\n");
+  printf("\t- 'h' - help\n");
 }
 
 /**
@@ -369,7 +379,11 @@ void run_game(int r, int c, int m)
     printf(">");
     scanf(" %c", &op);
     if (op == 'q' || op == 'Q') {
-      return msw_quit(&game);
+      msw_quit(&game);
+    } else if (op == 'h' || op == 'H') {
+      help();
+      status = MSW_MMOVE;
+      continue;
     }
 
     scanf(" %d , %d", &r, &c);
@@ -394,12 +408,7 @@ void run_game(int r, int c, int m)
 void usage(char *name) {
   printf("usage: %s [rows columns [mines]]\n", name);
   printf("\tPlay minesweeper.\n");
-  printf("\nIn-game commands:\n");
-  printf("\t- 'd ROW,COL' - dig at ROW,COL\n");
-  printf("\t- 'f ROW,COL' - flag ROW,COL\n");
-  printf("\t- 'u ROW,COL' - unflag (remove flag) ROW,COL\n");
-  printf("\t- 'r ROW,COL' - reveal ROW,COL\n");
-  printf("\t- 'q' - quit\n");
+  help();
 }
 
 /**
