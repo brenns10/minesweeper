@@ -241,13 +241,13 @@ int msw_dig(smb_mine *game, int row, int column) {
     for (n = 0; n < NUM_NEIGHBORS; n++) {
       msw_dig(game, row + rnbr[n], column + cnbr[n]);
     }
+  } else if (game->visible[index] == MSW_FLAG) {
+    // If the selected cell is a flag, do nothing.
+    return 1;
   } else if (game->grid[index] == MSW_MINE) {
     // If the selected cell is a mine.
     game->visible[index] = MSW_MINE;
     return -1; // BOOM
-  } else if (game->visible[index] == MSW_FLAG) {
-    // If the selected cell is a flag, do nothing.
-    return 1;
   } else {
     // Otherwise, reveal the data in the grid.
     game->visible[index] = game->grid[index];
@@ -262,6 +262,44 @@ int msw_flag(smb_mine *game, int r, int c) {
   int index = msw_index(game, r, c);
   if (game->visible[index] == MSW_UNKNOWN) {
     game->visible[index] = MSW_FLAG;
+  }
+  return 1;
+}
+
+/**
+   @brief "Reveal" a cell.
+
+   This operation will dig every neighboring cell if the current cell is marked
+   n, and has n neighboring cells.
+ */
+int msw_reveal(smb_mine *game, int r, int c) {
+  int n, rv;
+  int nflags = 0;
+  int nmarks = game->visible[msw_index(game, r, c)] - '0';
+  int index = msw_index(game, r, c);
+
+  if (game->visible[index] == MSW_UNKNOWN ||
+      game->visible[index] == MSW_MINE ||
+      game->visible[index] == MSW_FLAG) {
+    return 1;
+  }
+
+  // Count the flags around the cell.
+  for (n = 0; n < NUM_NEIGHBORS; n++) {
+    if (msw_in_bounds(game, r+rnbr[n], c+cnbr[n]) &&
+        game->visible[msw_index(game, r+rnbr[n], c+cnbr[n])] == MSW_FLAG) {
+      nflags++;
+    }
+  }
+
+  // If there are at least n flags, we can dig around the cell.
+  if (nflags >= nmarks) {
+    for (n = 0; n < NUM_NEIGHBORS; n++) {
+      if (msw_in_bounds(game, r+rnbr[n], c+cnbr[n])) {
+        rv = msw_dig(game, r+rnbr[n], c+cnbr[n]);
+        if (rv != 1) return rv;
+      }
+    }
   }
   return 1;
 }
@@ -292,6 +330,8 @@ int main(int argc, char *argv[])
     scanf("%c %d, %d", &op, &r, &c);
     if (op == 'd') {
       status = msw_dig(&game, r, c);
+    } else if (op == 'r') {
+      status = msw_reveal(&game, r, c);
     } else {
       status = msw_flag(&game, r, c);
     }
