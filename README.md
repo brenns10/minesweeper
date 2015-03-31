@@ -19,6 +19,7 @@ a comma, and a column.  Here are the possible commands right now:
 
 * `d`: Dig.  This is what clicking normally is in minesweeper.
 * `f`: Flag.  This places a flag.
+* `u`: Unflag.  This removes a flag.
 * `r`: Reveal.  Use this to dig all the neighbors of a cell marked with the
   number *n*, when you have already flagged the *n* neighbors that have mines.
 

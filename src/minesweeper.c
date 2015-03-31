@@ -287,6 +287,19 @@ int msw_flag(smb_mine *game, int r, int c) {
 }
 
 /**
+   @brief Unflag a cell.
+ */
+int msw_unflag(smb_mine *game, int r, int c) {
+  int index = msw_index(game, r, c);
+  if (game->visible[index] == MSW_FLAG) {
+    game->visible[index] = MSW_UNKNOWN;
+    return MSW_MMOVE;
+  } else {
+    return MSW_MUNFLAGERR;
+  }
+}
+
+/**
    @brief "Reveal" a cell.
 
    This operation will dig every neighboring cell if the current cell is marked
@@ -339,6 +352,7 @@ void usage(char *name) {
   printf("\nIn-game commands:\n");
   printf("\t- 'd ROW,COL' - dig at ROW,COL\n");
   printf("\t- 'f ROW,COL' - flag ROW,COL\n");
+  printf("\t- 'u ROW,COL' - unflag (remove flag) ROW,COL\n");
   printf("\t- 'r ROW,COL' - reveal ROW,COL\n");
 }
 
@@ -387,11 +401,13 @@ int main(int argc, char *argv[])
     printf("%s\n", MSW_MSG[status]);
     printf(">");
     scanf(" %c %d , %d", &op, &r, &c);
-    if (op == 'd') {
+    if (op == 'd' || op == 'D') {
       status = msw_dig(&game, r, c);
-    } else if (op == 'r') {
+    } else if (op == 'r' || op == 'R') {
       status = msw_reveal(&game, r, c);
-    } else if (op == 'f') {
+    } else if (op == 'u' || op == 'U') {
+      status = msw_unflag(&game, r, c);
+    } else if (op == 'f' || op == 'F') {
       status = msw_flag(&game, r, c);
     } else {
       status = MSW_CMD;

@@ -31,7 +31,9 @@ char *MSW_MSG[] = {
   "Can't reveal a hidden or flagged cell.",
   "Can't reveal if you haven't flagged all the mines around the cell.",
   "That cell is flagged.",
-  "BOOM!"
+  "Bad command.",
+  "BOOM!",
+  "Can only unflag a flagged cell.",
 };
 
 #define MSW_MMOVE 0
@@ -40,7 +42,9 @@ char *MSW_MSG[] = {
 #define MSW_MREVEALHF 3
 #define MSW_MREVEALN 4
 #define MSW_FLAGGED 5
-#define MSW_MBOOM 6
+#define MSW_CMD 6
+#define MSW_MBOOM 7
+#define MSW_MUNFLAGERR 8
 
 /* Macro to determine if the game can continue after a move. */
 #define MSW_MOK(x) ((x) != MSW_MBOOM)
@@ -70,6 +74,7 @@ void msw_print(smb_mine *game, FILE *stream);
 /* Game actions. */
 int msw_dig(smb_mine *game, int row, int column);
 int msw_flag(smb_mine *game, int r, int c);
+int msw_unflag(smb_mine *game, int r, int c);
 int msw_reveal(smb_mine *game, int r, int c);
 
 #endif /* MINESWEEPER_H */
