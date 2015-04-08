@@ -72,6 +72,7 @@ docs: src/*
 
 # Dependencies.
 src/minesweeper.c: src/minesweeper.h
+src/cli.c: src/minesweeper.h
 
 # --- Compile Rule
 obj/$(CFG)/%.o: src/%.c

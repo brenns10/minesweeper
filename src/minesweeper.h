@@ -21,21 +21,12 @@
 #define MSW_FLAG    'F'
 #define MSW_UNKNOWN '#'
 
+#define MSW_MSG_MAX 10
+
 /*
   Messages for user interface.
  */
-char *MSW_MSG[] = {
-  "Make a move.",
-  "Cell out of bounds.",
-  "Can only flag an unknown cell.",
-  "Can't reveal a hidden or flagged cell.",
-  "Can't reveal if you haven't flagged all the mines around the cell.",
-  "That cell is flagged.",
-  "Bad command.",
-  "BOOM!",
-  "Can only unflag a flagged cell.",
-  "You win!",
-};
+extern const char *MSW_MSG[];
 
 #define MSW_MMOVE 0
 #define MSW_MBOUND 1
@@ -52,7 +43,7 @@ char *MSW_MSG[] = {
 #define MSW_MOK(x) ((x) != MSW_MBOOM)
 
 /* Game object. */
-typedef struct smb_mine {
+typedef struct msw {
 
   char rows;
   char columns;
@@ -60,24 +51,24 @@ typedef struct smb_mine {
   char *grid;
   char *visible;
 
-} smb_mine;
+} msw;
 
 /* Construction/destruction. */
-void smb_mine_init(smb_mine *obj, int rows, int columns, int mines);
-smb_mine *smb_mine_create(int rows, int columns, int mines);
-void smb_mine_destroy(smb_mine *obj);
-void smb_mine_delete(smb_mine *obj);
+void msw_init(msw *obj, int rows, int columns, int mines);
+msw *msw_create(int rows, int columns, int mines);
+void msw_destroy(msw *obj);
+void msw_delete(msw *obj);
 
 /* Utilities. */
-int msw_in_bounds(smb_mine *game, int row, int column);
-int msw_index(smb_mine *game, int row, int column);
-void msw_print(smb_mine *game, FILE *stream);
+int msw_in_bounds(msw *game, int row, int column);
+int msw_index(msw *game, int row, int column);
+void msw_print(msw *game, FILE *stream);
 
 /* Game actions. */
-int msw_dig(smb_mine *game, int row, int column);
-int msw_flag(smb_mine *game, int r, int c);
-int msw_unflag(smb_mine *game, int r, int c);
-int msw_reveal(smb_mine *game, int r, int c);
-int msw_quit(smb_mine *game);
+int msw_dig(msw *game, int row, int column);
+int msw_flag(msw *game, int r, int c);
+int msw_unflag(msw *game, int r, int c);
+int msw_reveal(msw *game, int r, int c);
+int msw_won(msw *game);
 
 #endif /* MINESWEEPER_H */

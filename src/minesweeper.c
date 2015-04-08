@@ -26,10 +26,23 @@
 char rnbr[NUM_NEIGHBORS] = {-1, -1, -1,  0,  0,  1,  1,  1};
 char cnbr[NUM_NEIGHBORS] = {-1,  0,  1, -1,  1, -1,  0,  1};
 
+const char *MSW_MSG[] = {
+  "Make a move.",
+  "Cell out of bounds.",
+  "Can only flag an unknown cell.",
+  "Can't reveal a hidden or flagged cell.",
+  "Can't reveal if you haven't flagged all the mines around the cell.",
+  "That cell is flagged.",
+  "Bad command.",
+  "BOOM!",
+  "Can only unflag a flagged cell.",
+  "You win!",
+};
+
 /**
    @brief Return whether or not a cell is in bounds.
  */
-int msw_in_bounds(smb_mine *game, int row, int column) {
+int msw_in_bounds(msw *game, int row, int column) {
   return (row >= 0 && row < game->rows &&
           column >= 0 && column < game->columns);
 }
@@ -37,14 +50,14 @@ int msw_in_bounds(smb_mine *game, int row, int column) {
 /**
    @brief Return the index of a cell.
  */
-int msw_index(smb_mine *game, int row, int column) {
+int msw_index(msw *game, int row, int column) {
   return row * game->columns + column;
 }
 
 /**
    @brief Randomly generate a grid for this game.
  */
-void msw_generate_grid(smb_mine *obj) {
+void msw_generate_grid(msw *obj) {
   int i, j, n;
   char tmp;
   int rows = obj->rows;
@@ -102,7 +115,7 @@ void msw_generate_grid(smb_mine *obj) {
    start with.  So, we keep generating grids until we get one where their
    initial selection is clear.
  */
-void msw_initial_grid(smb_mine *obj, int r, int c) {
+void msw_initial_grid(msw *obj, int r, int c) {
   srand(time(NULL));
 
   obj->grid = calloc(obj->rows * obj->columns, sizeof(char));
@@ -119,7 +132,7 @@ void msw_initial_grid(smb_mine *obj, int r, int c) {
 /**
    @brief Initialize a minesweeper game.
  */
-void smb_mine_init(smb_mine *obj, int rows, int columns, int mines)
+void msw_init(msw *obj, int rows, int columns, int mines)
 {
   int i;
   int ncells = rows * columns;
@@ -144,21 +157,21 @@ void smb_mine_init(smb_mine *obj, int rows, int columns, int mines)
 /**
    @brief Create a minesweeper game.
  */
-smb_mine *smb_mine_create(int rows, int columns, int mines)
+msw *msw_create(int rows, int columns, int mines)
 {
-  smb_mine *obj = malloc(sizeof(smb_mine));
+  msw *obj = malloc(sizeof(msw));
   if (obj == NULL) {
     fprintf(stderr, "error: malloc() returned null.\n");
     exit(EXIT_FAILURE);
   }
-  smb_mine_init(obj, rows, columns, mines);
+  msw_init(obj, rows, columns, mines);
   return obj;
 }
 
 /**
    @brief Destroy a minesweeper game.
  */
-void smb_mine_destroy(smb_mine *obj)
+void msw_destroy(msw *obj)
 {
   // Cleanup logic
   free(obj->grid);
@@ -168,12 +181,12 @@ void smb_mine_destroy(smb_mine *obj)
 /**
    @brief Destroy and free a minesweeper game.
  */
-void smb_mine_delete(smb_mine *obj) {
+void msw_delete(msw *obj) {
   if (obj) {
-    smb_mine_destroy(obj);
+    msw_destroy(obj);
     free(obj);
   } else {
-    fprintf(stderr, "smb_mine_delete: called with null pointer.\n");
+    fprintf(stderr, "msw_delete: called with null pointer.\n");
   }
 }
 
@@ -183,7 +196,7 @@ void smb_mine_delete(smb_mine *obj) {
    @param stream The stream to print to.
    @param buffer Which buffer to print -- the visible one or the true one.
  */
-void msw_print_buf(smb_mine *game, FILE *stream, char *buffer) {
+void msw_print_buf(msw *game, FILE *stream, char *buffer) {
   int i, j;
   char cell;
 
@@ -224,7 +237,7 @@ void msw_print_buf(smb_mine *game, FILE *stream, char *buffer) {
 /**
    @brief Print a minesweeper game's visible board to a stream.
  */
-void msw_print(smb_mine *game, FILE *stream) {
+void msw_print(msw *game, FILE *stream) {
   msw_print_buf(game, stream, game->visible);
 }
 
@@ -235,7 +248,7 @@ void msw_print(smb_mine *game, FILE *stream) {
    @param column The column to dig at.
    @returns A status variable of sorts.
  */
-int msw_dig(smb_mine *game, int row, int column) {
+int msw_dig(msw *game, int row, int column) {
   int n;
   int index = msw_index(game, row, column);
 
@@ -276,7 +289,7 @@ int msw_dig(smb_mine *game, int row, int column) {
 /**
    @brief Stick a flag in a cell.
  */
-int msw_flag(smb_mine *game, int r, int c) {
+int msw_flag(msw *game, int r, int c) {
   int index = msw_index(game, r, c);
   if (game->visible[index] == MSW_UNKNOWN) {
     game->visible[index] = MSW_FLAG;
@@ -289,7 +302,7 @@ int msw_flag(smb_mine *game, int r, int c) {
 /**
    @brief Unflag a cell.
  */
-int msw_unflag(smb_mine *game, int r, int c) {
+int msw_unflag(msw *game, int r, int c) {
   int index = msw_index(game, r, c);
   if (game->visible[index] == MSW_FLAG) {
     game->visible[index] = MSW_UNKNOWN;
@@ -305,7 +318,7 @@ int msw_unflag(smb_mine *game, int r, int c) {
    This operation will dig every neighboring cell if the current cell is marked
    n, and has n neighboring cells.
  */
-int msw_reveal(smb_mine *game, int r, int c) {
+int msw_reveal(msw *game, int r, int c) {
   int n, rv;
   int nflags = 0;
   int nmarks = game->visible[msw_index(game, r, c)] - '0';
@@ -339,7 +352,7 @@ int msw_reveal(smb_mine *game, int r, int c) {
   }
 }
 
-int msw_won(smb_mine *game) {
+int msw_won(msw *game) {
   int ncells = game->rows * game->columns;
   int i;
   for (i = 0; i < ncells; i++) {
@@ -353,121 +366,4 @@ int msw_won(smb_mine *game) {
     }
   }
   return 1;
-}
-
-int msw_quit(smb_mine *game) {
-  printf("Aww. Play again soon!\n");
-  smb_mine_destroy(game);
-  exit(EXIT_SUCCESS);
-}
-
-/**
-   @brief Clear the screen (for POSIX terminals).
- */
-void cls() {
-  printf("\e[1;1H\e[2J");
-}
-
-void help() {
-  printf("\nIn-game commands:\n");
-  printf("\t- 'd ROW,COL' - dig at ROW,COL\n");
-  printf("\t- 'f ROW,COL' - flag ROW,COL\n");
-  printf("\t- 'u ROW,COL' - unflag (remove flag) ROW,COL\n");
-  printf("\t- 'r ROW,COL' - reveal ROW,COL\n");
-  printf("\t- 'q' - quit\n");
-  printf("\t- 'h' - help\n");
-}
-
-/**
-   @brief Run a whole game via CLI.
- */
-void run_game(int r, int c, int m)
-{
-  smb_mine game;
-  int status = MSW_MMOVE;
-  char op;
-
-  smb_mine_init(&game, r, c, m);
-  cls();
-  msw_print(&game, stdout);
-  while (MSW_MOK(status)) {
-    printf("%s\n", MSW_MSG[status]);
-    printf(">");
-    scanf(" %c", &op);
-    if (op == 'q' || op == 'Q') {
-      msw_quit(&game);
-    } else if (op == 'h' || op == 'H') {
-      help();
-      status = MSW_MMOVE;
-      continue;
-    }
-
-    scanf(" %d , %d", &r, &c);
-    if (op == 'd' || op == 'D') {
-      status = msw_dig(&game, r, c);
-    } else if (op == 'r' || op == 'R') {
-      status = msw_reveal(&game, r, c);
-    } else if (op == 'u' || op == 'U') {
-      status = msw_unflag(&game, r, c);
-    } else if (op == 'f' || op == 'F') {
-      status = msw_flag(&game, r, c);
-    } else {
-      status = MSW_CMD;
-    }
-    cls();
-    msw_print(&game, stdout);
-
-    if (msw_won(&game)) {
-      status = MSW_MWIN;
-      break;
-    }
-  }
-  printf("%s\n", MSW_MSG[status]);
-  smb_mine_destroy(&game);
-}
-
-void usage(char *name) {
-  printf("usage: %s [rows columns [mines]]\n", name);
-  printf("\tPlay minesweeper.\n");
-  help();
-}
-
-/**
-   @brief Run a command oriented game of minesweeper.
- */
-int main(int argc, char *argv[])
-{
-  int r, c, m;
-
-  // Show usage screen.
-  if (argc >= 2 && strcmp(argv[1], "-h") == 0) {
-    usage(argv[0]);
-    return EXIT_SUCCESS;
-  }
-
-  // Set the grid size, if given.
-  if (argc >= 3) {
-    sscanf(argv[1], "%d", &r);
-    sscanf(argv[2], "%d", &c);
-    if (r <= 0 || c <= 0 || r > 255 || c > 255) {
-      fprintf(stderr, "error: bad grid size (%dx%d)\n", r, c);
-      return EXIT_FAILURE;
-    }
-  } else {
-    r = c = 10;
-  }
-
-  if (argc >= 4) {
-    sscanf(argv[3], "%d", &m);
-    if (m <= 0 || m > r*c) {
-      fprintf(stderr, "error: bad number of mines (%d)\n", m);
-      return EXIT_FAILURE;
-    }
-  } else {
-    m = 20;
-  }
-
-  run_game(r,c,m);
-
-  return 0;
 }
