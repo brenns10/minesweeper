@@ -21,8 +21,6 @@
 #define MSW_FLAG    'F'
 #define MSW_UNKNOWN '#'
 
-#define MSW_MSG_MAX 10
-
 /*
   Messages for user interface.
  */
@@ -70,5 +68,9 @@ int msw_flag(msw *game, int r, int c);
 int msw_unflag(msw *game, int r, int c);
 int msw_reveal(msw *game, int r, int c);
 int msw_won(msw *game);
+
+/* UI's */
+int gui_main(int argc, char **argv);
+int cli_main(int argc, char **argv);
 
 #endif /* MINESWEEPER_H */

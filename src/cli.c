@@ -87,7 +87,7 @@ void run_game(int r, int c, int m)
   msw_destroy(&game);
 }
 
-void usage(char *name) {
+static void usage(char *name) {
   printf("usage: %s [rows columns [mines]]\n", name);
   printf("\tPlay minesweeper.\n");
   help();
@@ -96,7 +96,7 @@ void usage(char *name) {
 /**
    @brief Run a command oriented game of minesweeper.
  */
-int main(int argc, char *argv[])
+int cli_main(int argc, char *argv[])
 {
   int r, c, m;
 
