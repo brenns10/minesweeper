@@ -21,6 +21,9 @@ msw *game;
 GtkWidget **buttons;
 GtkWidget *label;
 
+/**
+   @brief Encode a minsweeper location into a gpointer.
+ */
 static gpointer gui_encode_location(unsigned short row, unsigned short col)
 {
   uintptr_t p = row;
@@ -29,6 +32,9 @@ static gpointer gui_encode_location(unsigned short row, unsigned short col)
   return (gpointer)p;
 }
 
+/**
+   @brief Decode a minesweeper location from a gpointer into a pair of vars.
+ */
 static void gui_decode_location(gpointer p, unsigned short *row, unsigned short *col)
 {
   uintptr_t mask = 0;
@@ -37,6 +43,9 @@ static void gui_decode_location(gpointer p, unsigned short *row, unsigned short 
   *row = (uintptr_t)p >> (sizeof(*col) * 8);
 }
 
+/**
+   @brief Get the label associated with a minesweeper character.
+ */
 static char *gui_label(char c)
 {
   switch (c) {
@@ -69,6 +78,9 @@ static char *gui_label(char c)
   }
 }
 
+/**
+   @brief Draw the labels onto the buttons and the status.
+ */
 static void gui_draw(int status)
 {
   int max = game->rows * game->columns;
@@ -79,6 +91,9 @@ static void gui_draw(int status)
   gtk_label_set_text(GTK_LABEL(label), MSW_MSG[status]);
 }
 
+/**
+   @brief Handle a button click on the grid.
+ */
 static void gui_click(GtkWidget *widget, GdkEvent *event, gpointer data)
 {
   unsigned short row, col;
@@ -89,18 +104,28 @@ static void gui_click(GtkWidget *widget, GdkEvent *event, gpointer data)
   gui_decode_location(data, &row, &col);
 
   if (evtBttn->button == 1) {
+    // Left click = DIG.
     status = msw_dig(game, row, col);
   } else if (evtBttn->button == 2) {
+    // Middle click = REVEAL.
     status = msw_reveal(game, row, col);
   } else if (evtBttn->button == 3) {
+    // Right click = FLAG.
     status = msw_flag(game, row, col);
     if (status == MSW_MFLAGERR) {
+      // If flag failed, there must be a flag there already, so unflag.
       status = msw_unflag(game, row, col);
+      if (status == MSW_MUNFLAGERR) {
+        // If that failed too, return the original error.
+        status = MSW_MFLAGERR;
+      }
     }
   }
 
+  // Draw the GUI after that.
   gui_draw(status);
 
+  // Handle win/loss cases.
   if (msw_won(game)) {
     dialog = gtk_message_dialog_new(GTK_WINDOW(window),
                                     GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
@@ -120,6 +145,9 @@ static void gui_click(GtkWidget *widget, GdkEvent *event, gpointer data)
   }
 }
 
+/**
+   @brief "Activate" the GUI.  Called by my GTK application.
+ */
 void gui_activate(GtkApplication *app, gpointer user_data)
 {
   GtkWidget *window;
@@ -136,6 +164,7 @@ void gui_activate(GtkApplication *app, gpointer user_data)
   grid = gtk_grid_new();
   gtk_container_add(GTK_CONTAINER(window), grid);
 
+  // Create the status label
   label = gtk_label_new("Make a move.");
 
   // Allocate space to store our buttons.
@@ -155,11 +184,19 @@ void gui_activate(GtkApplication *app, gpointer user_data)
   gtk_grid_attach(GTK_GRID(grid), label, 0, game->rows, game->columns, 1);
   gtk_widget_show_all(window);
 }
+
+/**
+   @brief Display usage about this program.
+ */
 static void usage(char *name) {
   printf("usage: %s [rows columns [mines]]\n", name);
   printf("\tPlay minesweeper.\n");
 }
 
+
+/**
+   @brief Run the GUI, given rows, columns, and mines.
+ */
 static int gui_run(int argc, char **argv, int r, int c, int m)
 {
   GtkApplication *app;
