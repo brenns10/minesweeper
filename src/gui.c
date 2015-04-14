@@ -68,7 +68,7 @@ static char *gui_label(char c)
   case '8':
     return "8";
   case '#':
-    return " ";
+    return "  ";
   case '!':
     return "!";
   case 'F':
@@ -182,6 +182,7 @@ void gui_activate(GtkApplication *app, gpointer user_data)
     }
   }
   gtk_grid_attach(GTK_GRID(grid), label, 0, game->rows, game->columns, 1);
+  gui_draw(MSW_MMOVE);
   gtk_widget_show_all(window);
 }
 
