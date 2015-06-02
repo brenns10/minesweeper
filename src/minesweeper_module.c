@@ -179,16 +179,50 @@ static PyTypeObject minesweeper_MinesweeperType = {
 
 /*******************************************************************************
 
+                                 Module Methods
+
+*******************************************************************************/
+
+static PyObject *minesweeper_get_message(PyObject *self, PyObject *args)
+{
+  int message;
+
+  if (!PyArg_ParseTuple(args, "i", &message))
+    return NULL;
+
+  return PyUnicode_FromString(MSW_MSG[message]);
+}
+
+static PyObject *minesweeper_status_ok(PyObject *self, PyObject *args)
+{
+  int message;
+
+  if (!PyArg_ParseTuple(args, "i", &message))
+    return NULL;
+
+  return PyBool_FromLong(MSW_MOK(message));
+}
+
+/*******************************************************************************
+
                             Module Table Definitions
 
 *******************************************************************************/
+
+static PyMethodDef minesweeper_methods[] = {
+  {"get_message", (PyCFunction)minesweeper_get_message, METH_VARARGS,
+   "Get the string message associated with a return value."},
+  {"status_ok", (PyCFunction)minesweeper_status_ok, METH_VARARGS,
+   "Return True if a status message is OK to continue."},
+  {NULL}
+};
 
 static struct PyModuleDef minesweeper_module = {
   PyModuleDef_HEAD_INIT,
   "minesweeper",      // module name
   NULL,               // docstring
   -1,                 // size of per-interpreter state??
-  NULL                // methods
+  minesweeper_methods // methods
 };
 
 PyMODINIT_FUNC PyInit_minesweeper(void)
@@ -206,5 +240,16 @@ PyMODINIT_FUNC PyInit_minesweeper(void)
   Py_INCREF(&minesweeper_MinesweeperType);
   PyModule_AddObject(m, "Minesweeper",
                      (PyObject*) &minesweeper_MinesweeperType);
+
+  PyModule_AddIntConstant(m, "MOVE", MSW_MMOVE);
+  PyModule_AddIntConstant(m, "BOUND", MSW_MBOUND);
+  PyModule_AddIntConstant(m, "FLAGERR", MSW_MFLAGERR);
+  PyModule_AddIntConstant(m, "REVEALHF", MSW_MREVEALHF);
+  PyModule_AddIntConstant(m, "REVEALN", MSW_MREVEALN);
+  PyModule_AddIntConstant(m, "FLAGGED", MSW_FLAGGED);
+  PyModule_AddIntConstant(m, "CMD", MSW_CMD);
+  PyModule_AddIntConstant(m, "BOOM", MSW_MBOOM);
+  PyModule_AddIntConstant(m, "UNFLAGERR", MSW_MUNFLAGERR);
+  PyModule_AddIntConstant(m, "WIN", MSW_MWIN);
   return m;
 }
