@@ -22,10 +22,10 @@ enum msw_color {
 
 static void draw_game(struct msw_curses *mc)
 {
-	wclear(mc->board);
+	box(mc->board, 0, 0);
 	for (unsigned int r = 0; r < mc->game.rows; r++) {
 		for (unsigned int c = 0; c < mc->game.columns; c++) {
-			wmove(mc->board, r, c);
+			wmove(mc->board, r + 1, c + 1);
 			char cell = msw_vcell(&mc->game, r, c);
 			int toprint;
 			switch (cell) {
@@ -64,11 +64,20 @@ static void init_game(struct msw_curses *mc, int rows, int cols, int mines)
 	cbreak();             // pass key presses to program, but not signals
 	noecho();             // don't echo key presses to screen
 	keypad(stdscr, TRUE); // allow arrow keys
-	timeout(-1);          // block on getch()
 	curs_set(0);          // set the cursor to invisible
 
+	/*
+	 * For some reason, getch() needs to happen before output renders?
+	 * I truly have no idea why this is the case. But in any case, set the
+	 * timeout to zero, run getch(), and then go into blocking mode since we
+	 * want to wait for key presses during the game.
+	 */
+	timeout(0);
+	getch();
+	timeout(-1);
+
 	// Create window as a good abstraction in case we add other components
-	mc->board = newwin(rows, cols, 0, 0);
+	mc->board = newwin(rows + 2, cols + 2, 0, 0);
 	mc->cur_row = mc->cur_col = 0;
 
 	init_pair(MC_RED, COLOR_RED, COLOR_BLACK);
@@ -81,7 +90,9 @@ static void init_game(struct msw_curses *mc, int rows, int cols, int mines)
 	init_pair(MC_SEVEN, COLOR_WHITE, COLOR_BLACK);
 	init_pair(MC_EIGHT, COLOR_WHITE, COLOR_BLACK);
 
+
 	draw_game(mc);
+	doupdate();
 }
 
 static void destroy_game(struct msw_curses *mc)
@@ -157,8 +168,6 @@ int curses_main(int argc, char **argv)
 
 	// TODO accept row/col/mine arg
 	init_game(&mc, rows, cols, mines);
-	draw_game(&mc);
-	doupdate();
 	game_loop(&mc);
 	destroy_game(&mc);
 	return 0;
