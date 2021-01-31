@@ -51,17 +51,22 @@ int msw_index(msw *game, int row, int column)
 	return row * game->columns + column;
 }
 
+static inline void msw_set_grid(msw *game, struct msw_loc loc, char val)
+{
+	game->grid[loc.row * game->columns + loc.col] = val;
+}
+
 /**
  * @brief Randomly generate a grid for this game.
  */
 void msw_generate_grid(msw *obj)
 {
-	int i, j, n;
+	int i, j;
 	char tmp;
-	int rows = obj->rows;
-	int columns = obj->columns;
 	int mines = obj->mines;
-	int ncells = rows * columns;
+	int ncells = obj->rows * obj->columns;
+	struct msw_loc loc, neigh;
+	int iter;
 
 	// Initialize the grid.
 	for (i = 0; i < ncells; i++) {
@@ -82,30 +87,19 @@ void msw_generate_grid(msw *obj)
 	}
 
 	// Count adjacent mines.
-	for (i = 0; i < rows; i++) {
-		for (j = 0; j < columns; j++) {
+	for_each_row_col(obj, loc)
+	{
+		tmp = msw_get_grid(obj, loc);
 
-			// For each cell:
-			if (obj->grid[msw_index(obj, i, j)] == MSW_MINE) {
+		if (tmp == MSW_MINE)
+			continue;
 
-				// If it is a mine, loop over its neighbors.
-				for (n = 0; n < NUM_NEIGHBORS; n++) {
-					if (msw_in_bounds(obj, i + rnbr[n],
-					                  j + cnbr[n]) &&
-					    obj->grid[msw_index(
-					            obj, i + rnbr[n],
-					            j + cnbr[n])] != MSW_MINE) {
-
-						// If the neighbor is in bounds
-						// and not a mine, increment its
-						// count.
-						obj->grid[msw_index(
-						        obj, i + rnbr[n],
-						        j + cnbr[n])]++;
-					}
-				}
-			}
+		for_each_neigh(obj, neigh, &loc, iter)
+		{
+			if (msw_get_grid(obj, neigh) == MSW_MINE)
+				tmp++;
 		}
+		msw_set_grid(obj, loc, tmp);
 	}
 }
 

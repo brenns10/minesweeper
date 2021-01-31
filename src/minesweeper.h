@@ -53,6 +53,11 @@ typedef struct msw {
 
 } msw;
 
+struct msw_loc {
+	int row;
+	int col;
+};
+
 /* Construction/destruction. */
 void msw_init(msw *obj, int rows, int columns, int mines);
 msw *msw_create(int rows, int columns, int mines);
@@ -75,5 +80,31 @@ int msw_won(msw *game);
 int gui_main(int argc, char **argv);
 int cli_main(int argc, char **argv);
 int curses_main(int argc, char **argv);
+
+#define for_each_row_col(pgame, LVAR) \
+	for (LVAR.row = 0; LVAR.row < (pgame)->rows; LVAR.row++) \
+		for (LVAR.col = 0; LVAR.col < (pgame)->columns; LVAR.col++)
+
+#define for_each_neigh(game, NEIGHVAR, PLOC, IVAR) \
+	for (NEIGHVAR = (struct msw_loc){.row=(PLOC)->row + rnbr[0], .col=(PLOC)->col + cnbr[0]}, IVAR = 0; \
+	     IVAR < NUM_NEIGHBORS; \
+	     IVAR++, NEIGHVAR = (struct msw_loc){.row=(PLOC)->row + rnbr[IVAR], .col=(PLOC)->col + cnbr[IVAR]}) \
+	     if (msw_inbound(game, NEIGHVAR))
+
+static inline int msw_inbound(msw *game, struct msw_loc loc)
+{
+	return (loc.row >= 0 && loc.row < game->rows && loc.col >= 0 &&
+	        loc.col < game->columns);
+}
+
+static inline char msw_get_grid(msw *game, struct msw_loc loc)
+{
+	return game->grid[loc.row * game->columns + loc.col];
+}
+
+static inline char msw_get_visible(msw *game, struct msw_loc loc)
+{
+	return game->visible[loc.row * game->columns + loc.col];
+}
 
 #endif /* MINESWEEPER_H */
