@@ -5,6 +5,7 @@
  * Stephen Brennan
  */
 
+#include <stdbool.h> // bool
 #include <stdio.h>  // fprintf, fputc, scanf
 #include <stdlib.h> // srand, rand, calloc, malloc, free
 #include <string.h> // strcmp
@@ -377,4 +378,54 @@ int msw_won(msw *game)
 		}
 	}
 	return 1;
+}
+
+struct msw_ai_move msw_ai(msw *game)
+{
+	struct msw_loc loc, neigh;
+	int iter, unknown_neighbors, flagged_neighbors, cellval;
+	char val, neighval;
+
+	for_each_row_col(game, loc)
+	{
+		val = msw_get_visible(game, loc);
+		if (val == MSW_UNKNOWN || val == MSW_CLEAR || val == MSW_FLAG)
+			continue;
+		cellval = val - '0';
+
+		unknown_neighbors = flagged_neighbors = 0;
+		for_each_neigh(game, neigh, &loc, iter)
+		{
+			neighval = msw_get_visible(game, neigh);
+			if (neighval == MSW_FLAG)
+				flagged_neighbors += 1;
+			else if (neighval == MSW_UNKNOWN)
+				unknown_neighbors += 1;
+		}
+
+		if (flagged_neighbors == cellval && unknown_neighbors > 0) {
+			return (struct msw_ai_move) {
+				.action = AI_REVEAL,
+				.loc = loc,
+				.description = "Reveal (flag count matches cell count)",
+			};
+		} else if (flagged_neighbors + unknown_neighbors == cellval) {
+			for_each_neigh(game, neigh, &loc, iter)
+			{
+				neighval = msw_get_visible(game, neigh);
+				if (neighval == MSW_UNKNOWN) {
+					return (struct msw_ai_move) {
+						.action = AI_FLAG,
+						.loc = neigh,
+						.description = "Flag (only option for remaining unknowns)",
+					};
+				}
+			}
+		}
+	}
+	return (struct msw_ai_move) {
+		.action = AI_NONE,
+		.loc = (struct msw_loc){ .row=0, .col=0 },
+		.description = "I'm stumped!",
+	};
 }

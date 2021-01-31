@@ -102,6 +102,7 @@ void game_loop(struct msw_curses *mc)
 {
 	int key;
 	int status = MSW_MMOVE;
+	struct msw_ai_move move;
 
 	while (MSW_MOK(status) && (key = getch()) != 'q') {
 		switch (key) {
@@ -129,6 +130,17 @@ void game_loop(struct msw_curses *mc)
 		case 'r':
 			status = msw_reveal(&mc->game, mc->cur_row, mc->cur_col);
 			break;
+		case 'a':
+			move = msw_ai(&mc->game);
+			if (move.action == AI_REVEAL) {
+				mc->cur_row = move.loc.row;
+				mc->cur_col = move.loc.col;
+				status = msw_reveal(&mc->game, mc->cur_row, mc->cur_col);
+			} else if (move.action == AI_FLAG) {
+				mc->cur_row = move.loc.row;
+				mc->cur_col = move.loc.col;
+				status = msw_flag(&mc->game, mc->cur_row, mc->cur_col);
+			}
 		default:
 			break;
 		}

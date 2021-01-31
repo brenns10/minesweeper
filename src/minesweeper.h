@@ -58,6 +58,20 @@ struct msw_loc {
 	int col;
 };
 
+enum msw_ai_action {
+	AI_NONE,
+	AI_DIG,
+	AI_REVEAL,
+	AI_FLAG,
+};
+
+struct msw_ai_move {
+	const char *description;
+	int action;
+	struct msw_loc loc;
+};
+
+
 /* Construction/destruction. */
 void msw_init(msw *obj, int rows, int columns, int mines);
 msw *msw_create(int rows, int columns, int mines);
@@ -75,6 +89,7 @@ int msw_flag(msw *game, int r, int c);
 int msw_unflag(msw *game, int r, int c);
 int msw_reveal(msw *game, int r, int c);
 int msw_won(msw *game);
+struct msw_ai_move msw_ai(msw *game);
 
 /* UI's */
 int gui_main(int argc, char **argv);
