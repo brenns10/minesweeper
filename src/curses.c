@@ -3,8 +3,9 @@
 
 struct msw_curses {
 	struct msw game;
-	WINDOW *board;
+	WINDOW *board, *messages;
 	unsigned int cur_row, cur_col;
+	struct msw_loc size;
 };
 
 enum msw_color {
@@ -76,9 +77,14 @@ static void init_game(struct msw_curses *mc, int rows, int cols, int mines)
 	getch();
 	timeout(-1);
 
+	getmaxyx(stdscr, mc->size.row, mc->size.col);
+
 	// Create window as a good abstraction in case we add other components
 	mc->board = newwin(rows + 2, cols + 2, 0, 0);
 	mc->cur_row = mc->cur_col = 0;
+
+	mc->messages = newwin(rows + 2, 60, 0, cols + 2);
+	scrollok(mc->messages, true);
 
 	init_pair(MC_RED, COLOR_RED, COLOR_BLACK);
 	init_pair(MC_ONE, COLOR_BLUE, COLOR_BLACK);
@@ -152,6 +158,8 @@ void game_loop(struct msw_curses *mc)
 				mc->cur_col = move.loc.col;
 				status = msw_flag(&mc->game, mc->cur_row, mc->cur_col);
 			}
+			wprintw(mc->messages, "%s\n", move.description);
+			wnoutrefresh(mc->messages);
 		default:
 			break;
 		}
