@@ -14,8 +14,8 @@
 CC=gcc
 FLAGS=
 INC=-Isrc/
-CFLAGS=$(FLAGS) -c -g -Wall --std=c99 $(SMB_CONF) $(INC) `pkg-config --cflags gtk+-3.0`
-LFLAGS=$(FLAGS) `pkg-config --libs gtk+-3.0`
+CFLAGS=$(FLAGS) -c -g -Wall --std=c99 $(SMB_CONF) $(INC) $(shell pkg-config --cflags gtk+-3.0)
+LFLAGS=$(FLAGS) $(shell pkg-config --libs gtk+-3.0) -lncurses
 DIR_GUARD=@mkdir -p $(@D)
 
 # Build configurations.
@@ -40,7 +40,7 @@ endif
 endif
 
 # Sources and Objects
-SOURCES=$(shell find src/ -type f -name "*.c")
+SOURCES=src/minesweeper.c src/cli.c src/gui.c src/main.c src/curses.c
 SOURCEDIRS=$(shell find src/ -type d)
 
 OBJECTS=$(patsubst src/%.c,obj/$(CFG)/%.o,$(SOURCES))

@@ -40,6 +40,8 @@ extern const char *MSW_MSG[];
 /* Macro to determine if the game can continue after a move. */
 #define MSW_MOK(x) ((x) != MSW_MBOOM)
 
+#define msw_vcell(pgame, r, c) (pgame)->visible[(r) * (pgame)->columns + (c)]
+
 /* Game object. */
 typedef struct msw {
 
@@ -72,5 +74,6 @@ int msw_won(msw *game);
 /* UI's */
 int gui_main(int argc, char **argv);
 int cli_main(int argc, char **argv);
+int curses_main(int argc, char **argv);
 
 #endif /* MINESWEEPER_H */

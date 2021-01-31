@@ -20,6 +20,7 @@ static void usage(char *name)
   printf("usage: %s [gui|cli]\n", name);
   printf("\tgui: Use the GTK version.\n");
   printf("\tcli: Use the command line version.\n");
+  printf("\tcurses: Use the curses version.\n");
   exit(EXIT_FAILURE);
 }
 
@@ -33,6 +34,8 @@ int main(int argc, char *argv[])
     return gui_main(argc - 1, argv + 1);
   } else if (strcmp(argv[1], "cli") == 0) {
     return cli_main(argc - 1, argv + 1);
+  } else if (strcmp(argv[1], "curses") == 0) {
+    return curses_main(argc - 1, argv + 1);
   }
 
   usage(argv[0]);
