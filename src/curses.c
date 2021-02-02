@@ -157,6 +157,10 @@ void game_loop(struct msw_curses *mc)
 				mc->cur_row = move.loc.row;
 				mc->cur_col = move.loc.col;
 				status = msw_flag(&mc->game, mc->cur_row, mc->cur_col);
+			} else if (move.action == AI_DIG) {
+				mc->cur_row = move.loc.row;
+				mc->cur_col = move.loc.col;
+				status = msw_dig(&mc->game, mc->cur_row, mc->cur_col);
 			}
 			wprintw(mc->messages, "%s\n", move.description);
 			wnoutrefresh(mc->messages);

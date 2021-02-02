@@ -173,9 +173,6 @@ void msw_init(msw *obj, int rows, int columns, int mines)
 	obj->grid = NULL;
 	obj->visible = calloc(ncells, sizeof(char));
 	obj->ai = calloc(ncells, sizeof(struct msw_ai_percell));
-	dp("allocate ai buf: %lu bytes (%d recs, %lu size)\n",
-	   ncells * sizeof(struct msw_ai_percell), ncells,
-	   sizeof(struct msw_ai_percell));
 	if (obj->visible == NULL) {
 		fprintf(stderr, "error: calloc() returned null.\n");
 		exit(EXIT_FAILURE);
@@ -421,9 +418,21 @@ static inline struct msw_ai_percell *msw_get_percell(msw *game, struct msw_loc l
 
 static void msw_ai_add_mark(struct msw_ai_percell *pc, struct msw_mark *mark)
 {
-	fprintf(stderr, "Add mark %p to percell %p\n", mark, pc);
 	pc->marks[pc->markcnt] = mark;
 	pc->markcnt++;
+}
+
+static void msw_observe_mark(int generation, struct msw_mark *mark, struct msw_mark **full)
+{
+	if (mark->seen_generation != generation) {
+		mark->seen_generation = generation;
+		mark->group_seen = 0;
+	}
+	mark->group_seen++;
+	if (mark->group_seen == mark->group_count) {
+		mark->next = *full;
+		*full = mark;
+	}
 }
 
 static struct msw_ai_move msw_ai_fill_cell(msw *game, struct msw_loc loc)
@@ -454,10 +463,6 @@ static struct msw_ai_move msw_ai_fill_cell(msw *game, struct msw_loc loc)
 			pc->unknown_neighbors += 1;
 	}
 
-	dp("loc (%d, %d): fn=%d un=%d tn=%d, mc=%d\n", loc.row, loc.col,
-	   pc->flagged_neighbors, pc->unknown_neighbors, pc->total_neighbors,
-	   pc->mine_count);
-
 	if (pc->flagged_neighbors == pc->mine_count) {
 		/* All mines accounted for. Reveal if necessary, we're done here. */
 		if (pc->unknown_neighbors > 0) {
@@ -481,7 +486,6 @@ static struct msw_ai_move msw_ai_fill_cell(msw *game, struct msw_loc loc)
 		}
 		return move;
 	}
-	return move;
 
 	/* at this point, we have more unknowns than mines, define group */
 	pc->mark.group_mines = pc->mine_count - pc->flagged_neighbors;
@@ -496,16 +500,130 @@ static struct msw_ai_move msw_ai_fill_cell(msw *game, struct msw_loc loc)
 	return move;
 }
 
+static struct msw_ai_move msw_ai_move_first_unmarked_neigh(
+	msw *game, struct msw_loc loc, struct msw_mark *mark, int action, char *description)
+{
+	struct msw_loc neigh;
+	struct msw_ai_percell *npc;
+	char neighval;
+	int iter, idx;
+	bool has_mark;
+	struct msw_ai_move move;
+	move.action = AI_NONE;
+
+	for_each_neigh(game, neigh, &loc, iter)
+	{
+		npc = msw_get_percell(game, neigh);
+		neighval = msw_get_visible(game, neigh);
+		if (neighval != MSW_UNKNOWN)
+			continue;
+		has_mark = false;
+		for (idx = 0; idx < npc->markcnt; idx++) {
+			if (npc->marks[idx] == mark) {
+				has_mark = true;
+				break;
+			}
+		}
+		if (!has_mark) {
+			return (struct msw_ai_move) {
+				.loc=neigh,
+				.action=action,
+				.description=description,
+			};
+		}
+	}
+	dp("ERROR: assertion failed - no first unmarked neighbor (%d, %d)\n", loc.row, loc.col);
+	return move;
+}
+
+static struct msw_ai_move msw_ai_process_groups(msw *game, struct msw_loc loc)
+{
+	/*
+	 * No obvious moves exist.
+	 *
+	 * We have already made each cell part of multiple "groups" which place
+	 * constraints on the members. Now, let's do some reasoning based on the
+	 * groups.
+	 */
+	struct msw_loc neigh;
+	struct msw_ai_percell *pc, *npc;
+	char val, neighval;
+	struct msw_mark *full = NULL;
+	int iter, idx;
+	struct msw_ai_move move;
+
+	move.action = AI_NONE;
+	pc = msw_get_percell(game, loc);
+	val = msw_get_visible(game, loc);
+
+	/* We can only do this analysis for cells which have a revealed value of
+	 * 1 or greater */
+	if (val < '1' || val >= '9')
+		return move;
+	if (pc->unknown_neighbors == 0)
+		return move; // bail out early if there are no unknowns
+
+	for_each_neigh(game, neigh, &loc, iter)
+	{
+		npc = msw_get_percell(game, neigh);
+		neighval = msw_get_visible(game, neigh);
+		if (neighval != MSW_UNKNOWN)
+			continue;
+		/* for every mark, "observe" it and add it to the full list if
+		 * we've observed every cell with the same mark as a neighbor to
+		 * this cell */
+		for (idx = 0; idx < npc->markcnt; idx++) {
+			msw_observe_mark(loc.row * game->columns + loc.col,
+					 npc->marks[idx], &full);
+		}
+	}
+
+	for (; full; full = full->next) {
+		/* Can't do anything with our mark */
+		if (full == &pc->mark)
+			continue;
+		dp("at (%d, %d) a full group %p\n", loc.row, loc.col, full);
+		/* Can't do anything if the group is all neighbors */
+		if (full->group_count >= pc->unknown_neighbors)
+			continue;
+		int remaining_mines = pc->mine_count - pc->flagged_neighbors - full->group_mines;
+		int remaining_unknowns = pc->unknown_neighbors - full->group_count;
+		dp("-> LOC: fn=%d un=%d tn=%d, mc=%d\n", pc->flagged_neighbors, pc->unknown_neighbors,
+			pc->total_neighbors,
+			pc->mine_count);
+		dp("-> GROUP: mines=%d count=%d\n", full->group_mines, full->group_count);
+		dp("-> COMB: remaining_mines=%d remaining_unknowns=%d\n", remaining_mines, remaining_unknowns);
+		/* If the remaining mines is 0, dig all neighbors not in group.
+		 * If the remaining mines is equal to all non-group neighbors, flag
+		 * them all! */
+		if (remaining_mines == 0)
+			return msw_ai_move_first_unmarked_neigh(game, loc, full, AI_DIG,
+				"Dig because others are superset explaining remainder");
+		else if (remaining_mines == remaining_unknowns)
+			return msw_ai_move_first_unmarked_neigh(game, loc, full, AI_FLAG,
+				"Flag because others are superset explaining remainder");
+	}
+	return move;
+}
+
 struct msw_ai_move msw_ai(msw *game)
 {
 	struct msw_loc loc;
 	struct msw_ai_move move;
 
 	memset(game->ai, 0, sizeof(struct msw_ai_percell) * game->rows * game->columns);
-	dp("ai: memset buf %lu bytes\n", sizeof(struct msw_ai_percell) * game->rows * game->columns);
 	for_each_row_col(game, loc)
 	{
 		move = msw_ai_fill_cell(game, loc);
+		if (move.action != AI_NONE)
+			return move;
+	}
+
+	dp("Stumped: trying groups%c", '\n');
+
+	for_each_row_col(game, loc)
+	{
+		move = msw_ai_process_groups(game, loc);
 		if (move.action != AI_NONE)
 			return move;
 	}
