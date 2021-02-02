@@ -13,6 +13,8 @@
 
 #include "minesweeper.h"
 
+#define dp(fmt, ...) fprintf(stderr, "%s:%d: " fmt, __FILE__, __LINE__, __VA_ARGS__)
+
 /*
  * Define all eight neighbors for a cell.  The array rnbr is the offset from the
  * row for each neighbor, and the array cnbr is the offset from the column for
@@ -33,6 +35,32 @@ const char *MSW_MSG[] = {
 	"BOOM!",
 	"Can only unflag a flagged cell.",
 	"You win!",
+};
+
+struct msw_mark {
+	int group_mines;
+	int group_count;
+	int group_seen;
+	int seen_generation;
+	struct msw_mark *next;
+};
+
+struct msw_ai_percell {
+	union {
+		struct { /* For cells with a value */
+			int flagged_neighbors; // how many neighbors have flags
+			int unknown_neighbors; // how many neighbors in unknown state
+			int total_neighbors;   // how many neighbors total
+			int mine_count;        // how many mines (shown on this cell)
+
+			/* Each valued cell defines a group which we track */
+			struct msw_mark mark;
+		};
+		struct { /* For unknown */
+			int markcnt;
+			struct msw_mark *marks[8];
+		};
+	};
 };
 
 /**
@@ -144,6 +172,10 @@ void msw_init(msw *obj, int rows, int columns, int mines)
 	obj->mines = mines;
 	obj->grid = NULL;
 	obj->visible = calloc(ncells, sizeof(char));
+	obj->ai = calloc(ncells, sizeof(struct msw_ai_percell));
+	dp("allocate ai buf: %lu bytes (%d recs, %lu size)\n",
+	   ncells * sizeof(struct msw_ai_percell), ncells,
+	   sizeof(struct msw_ai_percell));
 	if (obj->visible == NULL) {
 		fprintf(stderr, "error: calloc() returned null.\n");
 		exit(EXIT_FAILURE);
@@ -177,6 +209,7 @@ void msw_destroy(msw *obj)
 	// Cleanup logic
 	free(obj->grid);
 	free(obj->visible);
+	free(obj->ai);
 }
 
 /**
@@ -380,49 +413,103 @@ int msw_won(msw *game)
 	return 1;
 }
 
-struct msw_ai_move msw_ai(msw *game)
+static inline struct msw_ai_percell *msw_get_percell(msw *game, struct msw_loc loc)
 {
-	struct msw_loc loc, neigh;
-	int iter, unknown_neighbors, flagged_neighbors, cellval;
+	struct msw_ai_percell *ptr = game->ai;
+	return &ptr[loc.row * game->columns + loc.col];
+}
+
+static void msw_ai_add_mark(struct msw_ai_percell *pc, struct msw_mark *mark)
+{
+	fprintf(stderr, "Add mark %p to percell %p\n", mark, pc);
+	pc->marks[pc->markcnt] = mark;
+	pc->markcnt++;
+}
+
+static struct msw_ai_move msw_ai_fill_cell(msw *game, struct msw_loc loc)
+{
+	struct msw_loc neigh;
+	struct msw_ai_percell *pc;
+	struct msw_ai_move move;
 	char val, neighval;
+	int iter;
 
-	for_each_row_col(game, loc)
+	move.action = AI_NONE;
+	val = msw_get_visible(game, loc);
+	pc = msw_get_percell(game, loc);
+
+	if (val == MSW_UNKNOWN || val == MSW_CLEAR || val == MSW_FLAG)
+		return move;
+
+	pc->mine_count = val - '0';
+
+	// count flagged / unknown neighbors
+	for_each_neigh(game, neigh, &loc, iter)
 	{
-		val = msw_get_visible(game, loc);
-		if (val == MSW_UNKNOWN || val == MSW_CLEAR || val == MSW_FLAG)
-			continue;
-		cellval = val - '0';
+		neighval = msw_get_visible(game, neigh);
+		pc->total_neighbors += 1;
+		if (neighval == MSW_FLAG)
+			pc->flagged_neighbors += 1;
+		else if (neighval == MSW_UNKNOWN)
+			pc->unknown_neighbors += 1;
+	}
 
-		unknown_neighbors = flagged_neighbors = 0;
+	dp("loc (%d, %d): fn=%d un=%d tn=%d, mc=%d\n", loc.row, loc.col,
+	   pc->flagged_neighbors, pc->unknown_neighbors, pc->total_neighbors,
+	   pc->mine_count);
+
+	if (pc->flagged_neighbors == pc->mine_count) {
+		/* All mines accounted for. Reveal if necessary, we're done here. */
+		if (pc->unknown_neighbors > 0) {
+			move.action = AI_REVEAL;
+			move.loc = loc;
+			move.description = "Reveal (flag count matches cell count)";
+		}
+		return move;
+	}
+	if (pc->flagged_neighbors + pc->unknown_neighbors == pc->mine_count) {
+		/* All unknowns are mines, flag them. */
+		move.action = AI_FLAG;
+		move.description = "Flag (only option for remaining unknowns)";
 		for_each_neigh(game, neigh, &loc, iter)
 		{
 			neighval = msw_get_visible(game, neigh);
-			if (neighval == MSW_FLAG)
-				flagged_neighbors += 1;
-			else if (neighval == MSW_UNKNOWN)
-				unknown_neighbors += 1;
-		}
-
-		if (flagged_neighbors == cellval && unknown_neighbors > 0) {
-			return (struct msw_ai_move) {
-				.action = AI_REVEAL,
-				.loc = loc,
-				.description = "Reveal (flag count matches cell count)",
-			};
-		} else if (flagged_neighbors + unknown_neighbors == cellval) {
-			for_each_neigh(game, neigh, &loc, iter)
-			{
-				neighval = msw_get_visible(game, neigh);
-				if (neighval == MSW_UNKNOWN) {
-					return (struct msw_ai_move) {
-						.action = AI_FLAG,
-						.loc = neigh,
-						.description = "Flag (only option for remaining unknowns)",
-					};
-				}
+			if (neighval == MSW_UNKNOWN) {
+				move.loc = neigh;
+				return move;
 			}
 		}
+		return move;
 	}
+	return move;
+
+	/* at this point, we have more unknowns than mines, define group */
+	pc->mark.group_mines = pc->mine_count - pc->flagged_neighbors;
+	pc->mark.group_count = pc->unknown_neighbors;
+	for_each_neigh(game, neigh, &loc, iter)
+	{
+		neighval = msw_get_visible(game, neigh);
+		if (neighval == MSW_UNKNOWN) {
+			msw_ai_add_mark(msw_get_percell(game, neigh), &pc->mark);
+		}
+	}
+	return move;
+}
+
+struct msw_ai_move msw_ai(msw *game)
+{
+	struct msw_loc loc;
+	struct msw_ai_move move;
+
+	memset(game->ai, 0, sizeof(struct msw_ai_percell) * game->rows * game->columns);
+	dp("ai: memset buf %lu bytes\n", sizeof(struct msw_ai_percell) * game->rows * game->columns);
+	for_each_row_col(game, loc)
+	{
+		move = msw_ai_fill_cell(game, loc);
+		if (move.action != AI_NONE)
+			return move;
+	}
+
 	return (struct msw_ai_move) {
 		.action = AI_NONE,
 		.loc = (struct msw_loc){ .row=0, .col=0 },

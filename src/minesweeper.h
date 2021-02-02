@@ -50,6 +50,7 @@ typedef struct msw {
   char mines;
   char *grid;
   char *visible;
+  void *ai;
 
 } msw;
 
