@@ -58,6 +58,7 @@ static void draw_game(struct msw_curses *mc)
 static void init_game(struct msw_curses *mc, int rows, int cols, int mines)
 {
 	msw_init(&mc->game, rows, cols, mines);
+	msw_enable_undo_logging(&mc->game, 4096);
 
 	// NCURSES initialization:
 	initscr();            // initialize curses
@@ -147,6 +148,9 @@ void game_loop(struct msw_curses *mc)
 		case 'r':
 			status = msw_reveal(&mc->game, mc->cur_row, mc->cur_col);
 			break;
+		case 'z':
+			status = msw_undo(&mc->game);
+			break;
 		case 'a':
 			move = msw_ai(&mc->game);
 			if (move.action == AI_REVEAL) {
@@ -170,6 +174,7 @@ void game_loop(struct msw_curses *mc)
 		//printf("key: %c, r=%d c=%d\n", key, mc->cur_row, mc->cur_col);
 		draw_game(mc);
 		doupdate();
+		msw_end_turn(&mc->game);
 	}
 }
 

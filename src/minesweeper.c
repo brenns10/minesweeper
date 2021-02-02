@@ -35,6 +35,8 @@ const char *MSW_MSG[] = {
 	"BOOM!",
 	"Can only unflag a flagged cell.",
 	"You win!",
+	"Undo is not supported",
+	"End of undo history",
 };
 
 struct msw_mark {
@@ -83,6 +85,22 @@ int msw_index(msw *game, int row, int column)
 static inline void msw_set_grid(msw *game, struct msw_loc loc, char val)
 {
 	game->grid[loc.row * game->columns + loc.col] = val;
+}
+
+static inline void msw_set_visible_noundo(msw *game, struct msw_loc loc, char val)
+{
+	game->visible[loc.row * game->columns + loc.col] = val;
+}
+static inline void msw_set_visible(msw *game, struct msw_loc loc, char val)
+{
+	if (game->undo) {
+		game->undo[game->undoidx].gen = game->gen;
+		game->undo[game->undoidx].loc = loc;
+		game->undo[game->undoidx].old = msw_get_visible(game, loc);
+		game->undoidx++;
+		game->undoidx %= game->undocap;
+	}
+	msw_set_visible_noundo(game, loc, val);
 }
 
 /**
@@ -173,6 +191,9 @@ void msw_init(msw *obj, int rows, int columns, int mines)
 	obj->grid = NULL;
 	obj->visible = calloc(ncells, sizeof(char));
 	obj->ai = calloc(ncells, sizeof(struct msw_ai_percell));
+	obj->undo = NULL;
+	obj->gen = 1;
+	obj->undoidx = 0;
 	if (obj->visible == NULL) {
 		fprintf(stderr, "error: calloc() returned null.\n");
 		exit(EXIT_FAILURE);
@@ -182,6 +203,47 @@ void msw_init(msw *obj, int rows, int columns, int mines)
 	for (i = 0; i < ncells; i++) {
 		obj->visible[i] = MSW_UNKNOWN;
 	}
+}
+
+void msw_enable_undo_logging(msw *obj, int cap)
+{
+	if (!obj->undo) {
+		obj->undo = calloc(cap, sizeof(struct msw_undo_entry));
+		obj->undoidx = 1;
+		obj->undocap = cap;
+		obj->undo[0].gen = obj->gen - 1;
+		obj->gen = 2;
+	}
+}
+
+void msw_end_turn(msw *obj)
+{
+	/* only increment generation if changes were made */
+	if (obj->undo[(obj->undoidx - 1) % obj->undocap].gen == obj->gen)
+		obj->gen++;
+}
+
+int msw_undo(msw *obj)
+{
+	if (!obj->undo)
+		return MSW_MNOUNDO;
+	int count = 0;
+	dp("undo generation %d, idx %d\n", obj->gen, obj->undoidx);
+	for (obj->undoidx = (obj->undoidx - 1) % obj->undocap;
+	     obj->undo[obj->undoidx].gen == obj->gen - 1;
+	     obj->undoidx = (obj->undoidx - 1) % obj->undocap) {
+		msw_set_visible_noundo(obj, obj->undo[obj->undoidx].loc,
+				       obj->undo[obj->undoidx].old);
+		obj->undo[obj->undoidx].gen = 0;
+		count += 1;
+	}
+	obj->undoidx = (obj->undoidx + 1) % obj->undocap;
+	if (!count) {
+		dp("cannot undo any more, %d, idx %d\n", obj->gen, obj->undoidx);
+		return MSW_MENDUNDO;
+	}
+	obj->gen -= 1;
+	return MSW_MMOVE;
 }
 
 /**
@@ -207,6 +269,7 @@ void msw_destroy(msw *obj)
 	free(obj->grid);
 	free(obj->visible);
 	free(obj->ai);
+	free(obj->undo);
 }
 
 /**
@@ -284,8 +347,8 @@ void msw_print(msw *game, FILE *stream)
  */
 int msw_dig(msw *game, int row, int column)
 {
-	int n;
-	int index = msw_index(game, row, column);
+	int iter;
+	struct msw_loc neigh, loc = {.row=row, .col=column};
 
 	// If the cell is out of bounds, return some sort of error.
 	if (!msw_in_bounds(game, row, column)) {
@@ -298,26 +361,27 @@ int msw_dig(msw *game, int row, int column)
 		msw_initial_grid(game, row, column);
 	}
 
-	if (game->grid[index] == MSW_CLEAR &&
-	    game->visible[index] != MSW_CLEAR) {
+	if (msw_get_grid(game, loc) == MSW_CLEAR &&
+	    msw_get_visible(game, loc) != MSW_CLEAR) {
 		// If the selected cell is clear, and we haven't updated the
 		// display with that information, update the display, and then
 		// recursively dig at each neighbor.
-		game->visible[index] = MSW_CLEAR;
-		for (n = 0; n < NUM_NEIGHBORS; n++) {
-			msw_dig(game, row + rnbr[n], column + cnbr[n]);
+		msw_set_visible(game, loc, MSW_CLEAR);
+		for_each_neigh(game, neigh, &loc, iter)
+		{
+			msw_dig(game, neigh.row, neigh.col);
 		}
 		return MSW_MMOVE;
-	} else if (game->visible[index] == MSW_FLAG) {
+	} else if (msw_get_visible(game, loc) == MSW_FLAG) {
 		// If the selected cell is a flag, do nothing.
 		return MSW_FLAGGED;
-	} else if (game->grid[index] == MSW_MINE) {
+	} else if (msw_get_grid(game, loc) == MSW_MINE) {
 		// If the selected cell is a mine.
-		game->visible[index] = MSW_MINE;
+		msw_set_visible(game, loc, MSW_MINE);
 		return MSW_MBOOM; // BOOM
 	} else {
 		// Otherwise, reveal the data in the grid.
-		game->visible[index] = game->grid[index];
+		msw_set_visible(game, loc, msw_get_grid(game, loc));
 		return MSW_MMOVE;
 	}
 }
@@ -327,9 +391,9 @@ int msw_dig(msw *game, int row, int column)
  */
 int msw_flag(msw *game, int r, int c)
 {
-	int index = msw_index(game, r, c);
-	if (game->visible[index] == MSW_UNKNOWN) {
-		game->visible[index] = MSW_FLAG;
+	struct msw_loc loc = {.row=r, .col=c};
+	if (msw_get_visible(game, loc) == MSW_UNKNOWN) {
+		msw_set_visible(game, loc, MSW_FLAG);
 		return MSW_MMOVE;
 	} else {
 		return MSW_MFLAGERR;
@@ -341,9 +405,9 @@ int msw_flag(msw *game, int r, int c)
  */
 int msw_unflag(msw *game, int r, int c)
 {
-	int index = msw_index(game, r, c);
-	if (game->visible[index] == MSW_FLAG) {
-		game->visible[index] = MSW_UNKNOWN;
+	struct msw_loc loc = {.row=r, .col=c};
+	if (msw_get_visible(game, loc) == MSW_FLAG) {
+		msw_set_visible(game, loc, MSW_UNKNOWN);
 		return MSW_MMOVE;
 	} else {
 		return MSW_MUNFLAGERR;
@@ -358,34 +422,31 @@ int msw_unflag(msw *game, int r, int c)
  */
 int msw_reveal(msw *game, int r, int c)
 {
-	int n, rv;
+	int rv, iter;
 	int nflags = 0;
 	int nmarks = game->visible[msw_index(game, r, c)] - '0';
-	int index = msw_index(game, r, c);
+	struct msw_loc neigh, loc = {.row=r, .col=c};
+	char val = msw_get_visible(game, loc);
 
-	if (game->visible[index] == MSW_UNKNOWN ||
-	    game->visible[index] == MSW_MINE ||
-	    game->visible[index] == MSW_FLAG) {
+	if (val == MSW_UNKNOWN || val == MSW_MINE || val == MSW_FLAG) {
 		return MSW_MREVEALHF;
 	}
 
 	// Count the flags around the cell.
-	for (n = 0; n < NUM_NEIGHBORS; n++) {
-		if (msw_in_bounds(game, r + rnbr[n], c + cnbr[n]) &&
-		    game->visible[msw_index(game, r + rnbr[n], c + cnbr[n])] ==
-		            MSW_FLAG) {
+	for_each_neigh(game, neigh, &loc, iter)
+	{
+		if (msw_get_visible(game, neigh) == MSW_FLAG) {
 			nflags++;
 		}
 	}
 
 	// If there are at least n flags, we can dig around the cell.
 	if (nflags >= nmarks) {
-		for (n = 0; n < NUM_NEIGHBORS; n++) {
-			if (msw_in_bounds(game, r + rnbr[n], c + cnbr[n])) {
-				rv = msw_dig(game, r + rnbr[n], c + cnbr[n]);
-				if (!MSW_MOK(rv))
-					return rv;
-			}
+		for_each_neigh(game, neigh, &loc, iter)
+		{
+			rv = msw_dig(game, neigh.row, neigh.col);
+			if (!MSW_MOK(rv))
+				return rv;
 		}
 		return MSW_MMOVE;
 	} else {
@@ -395,15 +456,17 @@ int msw_reveal(msw *game, int r, int c)
 
 int msw_won(msw *game)
 {
-	int ncells = game->rows * game->columns;
-	int i;
-	for (i = 0; i < ncells; i++) {
-		if (game->grid[i] == MSW_MINE) {
-			if (game->visible[i] != MSW_UNKNOWN &&
-			    game->visible[i] != MSW_FLAG) {
+	struct msw_loc loc;
+	char val, vis;
+	for_each_row_col(game, loc)
+	{
+		val = msw_get_grid(game, loc);
+		vis = msw_get_visible(game, loc);
+		if (val == MSW_MINE) {
+			if (vis != MSW_UNKNOWN && vis != MSW_FLAG) {
 				return 0;
 			}
-		} else if (game->grid[i] != game->visible[i]) {
+		} else if (val != vis) {
 			return 0;
 		}
 	}

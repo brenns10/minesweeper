@@ -36,11 +36,15 @@ extern const char *MSW_MSG[];
 #define MSW_MBOOM 7
 #define MSW_MUNFLAGERR 8
 #define MSW_MWIN 9
+#define MSW_MNOUNDO 10
+#define MSW_MENDUNDO 10
 
 /* Macro to determine if the game can continue after a move. */
 #define MSW_MOK(x) ((x) != MSW_MBOOM)
 
 #define msw_vcell(pgame, r, c) (pgame)->visible[(r) * (pgame)->columns + (c)]
+
+struct msw_undo_entry;
 
 /* Game object. */
 typedef struct msw {
@@ -51,6 +55,9 @@ typedef struct msw {
   char *grid;
   char *visible;
   void *ai;
+  struct msw_undo_entry *undo;
+  int gen;
+  int undoidx, undocap;
 
 } msw;
 
@@ -58,6 +65,13 @@ struct msw_loc {
 	int row;
 	int col;
 };
+
+struct msw_undo_entry {
+	struct msw_loc loc;
+	int gen;
+	char old;
+};
+
 
 enum msw_ai_action {
 	AI_NONE,
@@ -78,6 +92,7 @@ void msw_init(msw *obj, int rows, int columns, int mines);
 msw *msw_create(int rows, int columns, int mines);
 void msw_destroy(msw *obj);
 void msw_delete(msw *obj);
+void msw_enable_undo_logging(msw *obj, int cap);
 
 /* Utilities. */
 int msw_in_bounds(msw *game, int row, int column);
@@ -89,6 +104,8 @@ int msw_dig(msw *game, int row, int column);
 int msw_flag(msw *game, int r, int c);
 int msw_unflag(msw *game, int r, int c);
 int msw_reveal(msw *game, int r, int c);
+void msw_end_turn(msw *game);
+int msw_undo(msw *game);
 int msw_won(msw *game);
 struct msw_ai_move msw_ai(msw *game);
 
