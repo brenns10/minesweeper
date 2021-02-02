@@ -3,7 +3,7 @@
 
 struct msw_curses {
 	struct msw game;
-	WINDOW *board, *messages;
+	WINDOW *board, *messages, *status;
 	unsigned int cur_row, cur_col;
 	struct msw_loc size;
 };
@@ -53,6 +53,9 @@ static void draw_game(struct msw_curses *mc)
 		}
 	}
 	wnoutrefresh(mc->board);
+	wmove(mc->status, 0, 0);
+	wprintw(mc->status, "Found: %d/%d", mc->game.flags, mc->game.mines);
+	wnoutrefresh(mc->status);
 }
 
 static void init_game(struct msw_curses *mc, int rows, int cols, int mines)
@@ -86,6 +89,8 @@ static void init_game(struct msw_curses *mc, int rows, int cols, int mines)
 
 	mc->messages = newwin(rows + 2, 60, 0, cols + 2);
 	scrollok(mc->messages, true);
+
+	mc->status = newwin(1, 80, rows + 2, 0);
 
 	init_pair(MC_RED, COLOR_RED, COLOR_BLACK);
 	init_pair(MC_ONE, COLOR_BLUE, COLOR_BLACK);

@@ -49,11 +49,13 @@ struct msw_undo_entry;
 /* Game object. */
 typedef struct msw {
 
+  char *grid;
+  char *visible;
   char rows;
   char columns;
   char mines;
-  char *grid;
-  char *visible;
+  int flags;
+
   void *ai;
   struct msw_undo_entry *undo;
   int gen;

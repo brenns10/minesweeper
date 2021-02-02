@@ -194,6 +194,7 @@ void msw_init(msw *obj, int rows, int columns, int mines)
 	obj->undo = NULL;
 	obj->gen = 1;
 	obj->undoidx = 0;
+	obj->flags = 0;
 	if (obj->visible == NULL) {
 		fprintf(stderr, "error: calloc() returned null.\n");
 		exit(EXIT_FAILURE);
@@ -394,6 +395,7 @@ int msw_flag(msw *game, int r, int c)
 	struct msw_loc loc = {.row=r, .col=c};
 	if (msw_get_visible(game, loc) == MSW_UNKNOWN) {
 		msw_set_visible(game, loc, MSW_FLAG);
+		game->flags++;
 		return MSW_MMOVE;
 	} else {
 		return MSW_MFLAGERR;
@@ -408,6 +410,7 @@ int msw_unflag(msw *game, int r, int c)
 	struct msw_loc loc = {.row=r, .col=c};
 	if (msw_get_visible(game, loc) == MSW_FLAG) {
 		msw_set_visible(game, loc, MSW_UNKNOWN);
+		game->flags--;
 		return MSW_MMOVE;
 	} else {
 		return MSW_MUNFLAGERR;
